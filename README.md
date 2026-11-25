@@ -59,7 +59,9 @@ npm run dev
 - 公交、车流与行人使用简化的路线和距离判断，没有完整交通信号与避让；飞行器没有三维建筑碰撞的精细判定，低空会与楼体互相阻挡，高空可自由飞越。
 - 通缉、金钱与任务状态仅保存在当前页面会话，刷新即重置。
 
-设计草案见 `planning.html`。
+设计草案：
+- 金陵城区（中心城区）：https://butterjack07.github.io/nanjing/planning.html
+- 南京大学 · 仙林校区：https://butterjack07.github.io/nanjing/planning-xianlin.html
 
 ## 更新记录
 

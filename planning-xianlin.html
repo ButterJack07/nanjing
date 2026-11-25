@@ -1,0 +1,81 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>南京大学 · 仙林校区 · 游戏布局草案</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#17272b;color:#e8eddd;font-family:system-ui,"Microsoft YaHei",sans-serif}header{padding:28px 5vw 18px;border-bottom:1px solid #ffffff20}h1{font-size:24px;margin:0 0 10px}header p{color:#b5c7bb;font-size:13px;line-height:1.8;margin:0}.layout{display:grid;grid-template-columns:minmax(0,1fr) 320px;gap:24px;padding:24px 4vw}svg{width:100%;background:#243b3e;border:1px solid #ffffff20;border-radius:12px}aside{font-size:13px;line-height:1.9}h2{font-size:16px;color:#d6ed9e;margin-top:24px}h2:first-child{margin-top:0}ul{padding-left:19px;color:#becdc0}.tag{padding:7px 10px;background:#d6ed9e14;border:1px solid #d6ed9e30;border-radius:5px;color:#d6ed9e;display:inline-block}.note{color:#9fb4aa;font-size:11px}.campus{fill:#3f5b46;stroke:#7f9b78;stroke-width:2}.lawn{fill:#48694f}.water{fill:#467b83}.block{fill:#526b64;stroke:#243b3e;stroke-width:2}.enter{fill:#6f8f70;stroke:#d6ed9e;stroke-width:2}.track{fill:none;stroke:#b06a58;stroke-width:8}.road-main{stroke:#c7c8b0;stroke-width:11;fill:none;stroke-linejoin:round}.road-second{stroke:#879f97;stroke-width:6;fill:none;stroke-linejoin:round}.road-local{stroke:#607e78;stroke-width:3;fill:none}.label{fill:#dae1ce;font-size:11px;paint-order:stroke;stroke:#243b3e;stroke-width:4;stroke-linejoin:round}.place{fill:#eef0d7;font-size:15px;font-weight:600}.sub{fill:#acbfb1;font-size:10px}.poi{fill:#dcf29c;stroke:#243b3e;stroke-width:2.5}.bus{fill:none;stroke:#d8d88b;stroke-width:3;stroke-dasharray:7 5}.busstop{fill:#243b3e;stroke:#f0ead0;stroke-width:2.5}.spawn{fill:#8a6c4f;stroke:#e2c37f;stroke-width:2.5}.pad{fill:#55605c;stroke:#dfe7c8;stroke-width:2}.runway{fill:#4f5855;stroke:#dfe7c8;stroke-width:2}@media(max-width:900px){.layout{grid-template-columns:1fr}aside{display:grid;grid-template-columns:1fr 1fr;gap:20px}h2{margin-top:0}}@media(max-width:520px){aside{display:block}h2{margin-top:20px}}
+</style></head>
+<body><header><h1>南京大学 · 仙林校区 · 游戏布局草案</h1><p>北向上。以仙林大道与南门为基准，中心轴向北接杜厦图书馆；西侧教学区、东侧体育与生活区、北侧宿舍区。<br>道路为关系示意，非测绘底图；建筑尺度、楼位与站杆位置仍需可靠底图校准。校园不设地铁，改由校园校车环线承担校内交通。</p></header>
+<main class="layout"><svg viewBox="0 0 1000 1200" role="img" aria-label="仙林校区游戏布局：南门在下方仙林大道，中心轴北接杜厦图书馆，东西为教学与体育生活区，出生房在南门外">
+<defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#ffffff" stroke-opacity=".025"/></pattern></defs>
+<rect width="1000" height="1200" fill="url(#grid)"/>
+<!-- Campus ground -->
+<path class="campus" d="M33 50H803V920H33Z"/>
+<path class="lawn" d="M360 340H520V470H360Z"/>
+<path class="lawn" d="M520 520H640V620H520Z"/>
+<path class="water" d="M250 130Q330 120 344 190Q352 250 280 258Q215 262 205 200Q200 150 250 130Z"/>
+<!-- Roads -->
+<path class="road-main" d="M20 950H935"/>
+<path class="road-main" d="M440 950V480"/>
+<path class="road-second" d="M198 930V100"/>
+<path class="road-second" d="M682 930V100"/>
+<path class="road-second" d="M198 690H682"/>
+<path class="road-second" d="M198 480H682"/>
+<path class="road-second" d="M198 285H682"/>
+<path class="road-second" d="M198 100H682"/>
+<path class="road-local" d="M440 950V1090"/>
+<!-- Sports track -->
+<ellipse class="track" cx="577" cy="745" rx="34" ry="24"/>
+<!-- Campus shuttle loop -->
+<path class="bus" d="M440 890V480L682 285V565L198 480V690Z"/>
+<!-- Buildings -->
+<g class="block">
+  <rect x="379" y="150" width="14" height="90"/><rect x="379" y="270" width="14" height="70"/>
+  <rect x="230" y="330" width="26" height="16"/><rect x="230" y="360" width="24" height="14"/>
+  <rect x="230" y="560" width="26" height="16"/><rect x="230" y="620" width="26" height="16"/>
+</g>
+<!-- Library -->
+<rect x="419" y="376" width="42" height="28" fill="#7f9b78" stroke="#e1efbf" stroke-width="2"/>
+<text x="440" y="393" text-anchor="middle" fill="#eef0d7" font-size="10" font-weight="700">杜厦图书馆</text>
+<!-- Canteen -->
+<rect x="546" y="381" width="24" height="17" class="enter"/><text x="558" y="393" text-anchor="middle" fill="#17272b" font-size="8">食堂</text>
+<!-- Activity centre -->
+<rect x="280" y="550" width="34" height="21" class="enter"/><text x="297" y="564" text-anchor="middle" fill="#17272b" font-size="8">活动中心</text>
+<!-- Gym -->
+<rect x="557" y="552" width="40" height="26" class="enter"/><text x="577" y="568" text-anchor="middle" fill="#17272b" font-size="8">体育馆</text>
+<!-- Dorms -->
+<g class="enter"><rect x="527" y="184" width="12" height="12"/><rect x="582" y="184" width="12" height="12"/><rect x="637" y="184" width="12" height="12"/></g>
+<text x="588" y="176" text-anchor="middle" class="label" style="font-size:9px">学生宿舍 3–5 栋</text>
+<!-- Museum -->
+<rect x="556" y="843" width="20" height="14" class="enter"/><text x="566" y="836" text-anchor="middle" class="label" style="font-size:9px">校史馆</text>
+<!-- Store -->
+<rect x="283" y="773" width="16" height="14" class="enter"/><text x="291" y="798" text-anchor="middle" class="label" style="font-size:9px">便利店</text>
+<!-- Gate -->
+<g fill="#c2b9a3" stroke="#7c715c" stroke-width="2"><rect x="433" y="884" width="6" height="12"/><rect x="441" y="884" width="6" height="12"/></g>
+<text x="440" y="880" text-anchor="middle" class="place" style="font-size:13px">南门</text>
+<!-- Spawn area (south of avenue) -->
+<rect x="300" y="960" width="500" height="200" fill="#243b3e" stroke="#ffffff1a" stroke-width="2"/>
+<rect x="431" y="1021" width="18" height="12" class="spawn"/>
+<text x="440" y="1014" text-anchor="middle" class="label" style="font-size:9px">出生房</text>
+<rect x="470" y="1008" width="70" height="20" fill="#6d6f66" stroke="#d5d2bc" stroke-width="2"/>
+<text x="505" y="1042" text-anchor="middle" class="sub">停车区 · 跑车/吉普/电动/警车/公交</text>
+<rect x="540" y="1038" width="20" height="20" class="pad"/><text x="550" y="1032" text-anchor="middle" class="label" style="font-size:9px">停机坪</text>
+<rect x="320" y="1024" width="60" height="7" class="runway"/><text x="350" y="1018" text-anchor="middle" class="label" style="font-size:9px">跑道 · 运动型小飞机</text>
+<rect x="560" y="1066" width="46" height="18" fill="#566468" stroke="#c9c5a8" stroke-width="2"/><text x="583" y="1100" text-anchor="middle" class="sub">仙林公交场</text>
+<!-- Campus bus stops -->
+<g class="busstop"><circle cx="440" cy="890" r="6"/><circle cx="440" cy="480" r="6"/><circle cx="682" cy="285" r="6"/><circle cx="682" cy="565" r="6"/><circle cx="198" cy="480" r="6"/><circle cx="198" cy="690" r="6"/></g>
+<g class="label" style="font-size:9px"><text x="448" y="905">南大南门</text><text x="448" y="475">图书馆</text><text x="690" y="288">学生宿舍</text><text x="690" y="562">体育馆</text><text x="120" y="478">活动中心</text><text x="120" y="704">西门便利店</text></g>
+<!-- Road & place labels -->
+<g class="label"><text x="560" y="942">仙林大道</text><text x="448" y="620" transform="rotate(-90 448 620)">南大路（中央轴）</text><text x="188" y="560" transform="rotate(-90 188 560)">学府路</text><text x="694" y="560" transform="rotate(-90 694 560)">学则路</text><text x="300" y="684">涌泉路</text><text x="300" y="474">明湖路</text><text x="300" y="279">逸夫路</text><text x="300" y="94">北环路</text><text x="452" y="1000">南门支路</text></g>
+<text x="277" y="205" class="sub">明湖</text>
+<text x="250" y="590" class="sub" transform="rotate(-90 250 590)">教学楼群（西）</text>
+<text x="577" y="790" text-anchor="middle" class="sub">田径场</text>
+<!-- Legend -->
+<text x="48" y="64" fill="#d7e8c0" font-size="18">N ↑</text><text x="48" y="87" class="sub">概念图 · 不按比例</text>
+<g transform="translate(48 1150)" class="sub"><rect x="0" y="-9" width="14" height="12" class="enter"/><text x="22">可进入建筑</text><rect x="140" y="-9" width="16" height="12" class="spawn"/><text x="164">出生房</text><path d="M280 -3H310" class="bus"/><text x="318">校车环线</text><path d="M440 -3H470" class="road-main"/><text x="478">主干道</text></g>
+<g class="poi"><circle cx="419" cy="390" r="4"/><circle cx="546" cy="389" r="4"/><circle cx="280" cy="560" r="4"/><circle cx="557" cy="565" r="4"/><circle cx="283" cy="780" r="4"/><circle cx="556" cy="850" r="4"/></g>
+</svg><aside><section><span class="tag">仙林校区 · 校园地图</span>
+<h2>01 · 总体布局</h2><p>南门开在仙林大道，进门是中央轴（南大路），一路向北正对杜厦图书馆。西侧为教学楼群与大学生活动中心，东侧为体育馆、田径场与便利生活区，北侧集中学生宿舍，东北有明湖。</p><p>校园核心约 1.3×1.7 公里范围。现实中仙林校区规模很大，这里按游戏尺度压缩，只保留可辨识的相对关系。</p>
+<h2>02 · 可进入建筑</h2><ul><li>杜厦图书馆：借阅大厅、阅览桌椅，预留校史导览任务点。</li><li>学生第一食堂（2F 美食档）：跑腿取餐点。</li><li>学生宿舍 3–5 栋：6 层、逐层楼梯与门牌，跑腿送达点。</li><li>大学生活动中心：舞台与社团展台。</li><li>方肇周体育馆：室内场地与器材架。</li><li>校园便利店：货架偷窃、撬仓库门、购买补给。</li><li>校史馆：校史陈列与后续任务。</li></ul>
+<h2>03 · 出生房与载具</h2><p>出生点在校区南门外的出生房内。屋内是情报板（版本号 + GitHub 最新推送日期）、无限武器墙、补给箱与两座展示台。</p><ul><li>东侧停车区：跑车、越野吉普、电动车、警车（可驾驶）、公交。</li><li>东侧停机坪：直升机。</li><li>西侧跑道：运动型小飞机。</li></ul>
+<h2>04 · 校园校车</h2><p>此图不设地铁，改用校园校车环线：南大南门 → 图书馆 → 学生宿舍 → 体育馆 → 大学生活动中心 → 西门便利店，两辆 AI 车双向循环，站点落在道路中心线上，可驾驶共享校车接临时班次。</p>
+<h2>05 · 待校准项</h2><p class="note">建筑尺度与楼位、明湖岸线、宿舍编号、校车真实站名与站杆位置均为待校准项；本页是游戏布局草案，不是测绘或官方校园图。与南京大学官方无关联。</p>
+</section></aside></main></body></html>
