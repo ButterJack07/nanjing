@@ -151,9 +151,9 @@ function groundAt(pos) {
   let height = 0;
   const metro = world.stations.find(s => {
     const relative = pos.clone().sub(s.center), lx = relative.dot(s.normal), lz = relative.x * Math.sin(s.angle) + relative.z * Math.cos(s.angle);
-    return Math.abs(lx) < 5.5 && Math.abs(lz) < 34;
+    return Math.abs(lx) < 4.5 && Math.abs(lz) < 26;
   });
-  if (metro) { stationIndex = world.stations.indexOf(metro); if (pos.y < -.4) height = -14; }
+  if (metro) { stationIndex = world.stations.indexOf(metro); if (pos.y < -.4) height = -7; }
   else stationIndex = -1;
   for (const f of world.floors) {
     if (f.type === 'metroRamp') {
@@ -197,7 +197,7 @@ function interact() {
     if (Math.abs(v.speed) > 1.5) { toast('车辆行驶中，请等待停稳'); return; }
     if (v.type === 'metro' && !v.doors) { toast('请等待列车到站开门'); return; }
     let pos;
-    if (v.type === 'metro') { const s = world.stations[v.station]; pos = s.center.clone(); pos.y = -14; }
+    if (v.type === 'metro') { const s = world.stations[v.station]; pos = s.center.clone(); pos.y = -7; }
     else {
       pos = v.group.position.clone(); pos.x += Math.cos(v.yaw) * (v.w / 2 + 1.2); pos.z -= Math.sin(v.yaw) * (v.w / 2 + 1.2); pos.y = 0;
       if (collision(pos.x, pos.z, 0)) { toast('这一侧空间不足'); return; }
@@ -416,7 +416,6 @@ function updateCamera(dt) {
   const indoors = world.places.some(p => p.interior && Math.hypot(p.x - player.position.x, p.z - player.position.z) < 70) && !driven && !ridden;
   const camDistance = ridden && ridden.type === 'metro' ? 6 : indoors ? 5.5 : distance;
   const desired = target.clone().add(new THREE.Vector3(Math.sin(yaw) * Math.cos(pitch) * camDistance, Math.sin(pitch) * camDistance + 1.2, Math.cos(yaw) * Math.cos(pitch) * camDistance));
-  if (player.position.y < -4) desired.y = Math.min(desired.y, -8);
   const ray = new THREE.Raycaster(target, desired.clone().sub(target).normalize(), .2, target.distanceTo(desired));
   const obstacles = world.solids.filter(s => s.mesh && !s.disabled && s.high > target.y - .2 && s.low < desired.y + 2).map(s => s.mesh);
   const hit = ray.intersectObjects(obstacles, false)[0];
@@ -520,6 +519,9 @@ $('phone-close').onclick = closePhone;
 $('phone-back').onclick = $('phone-home').onclick = () => showPage('home');
 $('play-button').onclick = () => { focus(); if (isTouch) enterImmersive(); };
 const rotateButton = $('rotate-button'); if (rotateButton) rotateButton.onclick = () => { enterImmersive(); focus(); };
+const rotateOverlay = $('rotate-overlay');
+if (rotateOverlay) rotateOverlay.addEventListener('click', e => { if (e.target.closest('button')) return; enterImmersive(); focus(); });
+if (isTouch) addEventListener('pointerdown', () => { if (!document.fullscreenElement) enterImmersive(); }, { once: true, passive: true });
 if (mobileFire) mobileFire.onclick = () => fire();
 $('map-button').onclick = () => openPhone('map');
 $('hud-button').onclick = () => { gameEl.classList.toggle('hud-hidden'); hiddenHUD = !hiddenHUD; };
@@ -658,6 +660,8 @@ function frame() {
       if (shots[i].life <= 0) { scene.remove(shots[i].mesh); shots[i].mesh.geometry.dispose(); shots[i].mesh.material.dispose(); shots.splice(i, 1); }
     }
   }
+  // Hide the ground sheet while inside a B1 station so the room stays visible.
+  if (world.terrainMesh) world.terrainMesh.visible = player.position.y > -0.3;
   updateCamera(dt);
   if (elapsed - lastHUD > .1 || lastHUD === 0) { updateHUD(); drawMaps(); lastHUD = elapsed; }
   renderer.render(scene, camera);

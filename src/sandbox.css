@@ -68,4 +68,4 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .touch .crosshair{font-size:26px}
 .touch .map-tools button{padding:9px 6px}
 @media (max-width:560px){.touch .phone{width:min(94vw,392px);height:calc(100dvh - 12px);right:6px;bottom:6px}.touch .bottom-left{width:132px}.touch .vehicle-hud{width:118px}}
-@media (max-height:430px){.touch .mobile-controls button{width:50px;height:50px}.touch .dpad{grid-template-columns:repeat(3,50px)}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}}
+@media (max-height:430px){.touch .mobile-controls button{width:50px;height:50px}.touch .dpad{grid-template-columns:repeat(3,50px);grid-auto-rows:50px}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}}
