@@ -9,19 +9,17 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .rotate-overlay p{font-size:12px;line-height:1.9;color:#b9cbbd;margin:0}
 .rotate-overlay .primary-button{width:240px;margin-top:10px}
 .mobile-fire{background:#c98a6bdb!important;border-color:#f3bf9b88!important;color:#2b211b!important;font-weight:700}
+.touch .joystick{pointer-events:auto;touch-action:none;position:relative;width:132px;height:132px;border-radius:50%;background:#12262ba8;border:1px solid #ffffff44;box-shadow:inset 0 0 18px #0004}
+.touch .joystick-ring{position:absolute;inset:22px;border-radius:50%;border:1px dashed #ffffff2e}
+.touch .joystick-knob{position:absolute;left:50%;top:50%;width:58px;height:58px;margin:-29px 0 0 -29px;border-radius:50%;background:#e6f5a7d9;border:1px solid #ffffffaa;box-shadow:0 3px 12px #0006;will-change:transform}
 #game.touch{min-height:0;height:100dvh}
 .touch .controls-bar,.touch .location-heading,.touch .session{display:none!important}
 .touch .mobile-controls{display:flex;position:absolute;align-items:flex-end;justify-content:space-between;left:max(14px,env(safe-area-inset-left));right:max(14px,env(safe-area-inset-right));bottom:max(14px,env(safe-area-inset-bottom));gap:12px;pointer-events:none;z-index:6}
-.touch .mobile-controls button{pointer-events:auto;touch-action:none;width:56px;height:56px;font-size:22px;background:#12262bd0;border:1px solid #ffffff55;border-radius:12px;color:#e7efdb}
+.touch .mobile-controls button{pointer-events:auto;touch-action:none;width:64px;height:64px;font-size:22px;background:#12262bd0;border:1px solid #ffffff55;border-radius:12px;color:#e7efdb}
 .touch .mobile-controls button:active{background:#dff2a4bb;color:#1d2c24}
-.touch .dpad{display:grid;grid-template-columns:repeat(3,56px);grid-auto-rows:56px;gap:7px}
-.touch .dpad button:first-child{grid-column:2;grid-row:1}
-.touch .dpad button:nth-child(2){grid-column:1;grid-row:2}
-.touch .dpad button:nth-child(3){grid-column:2;grid-row:2}
-.touch .dpad button:nth-child(4){grid-column:3;grid-row:2}
-.touch .mobile-actions{display:flex;gap:10px;align-items:flex-end;flex-wrap:wrap;justify-content:flex-end}
-.touch #mobile-enter{background:#e6f5a7d9;color:#20342a;border-color:#e6f5a7}
-.touch #mobile-fire{background:#d6916fd9!important;color:#2b211b!important;border-color:#f3bf9b}
+.touch .mobile-actions{display:flex;gap:10px;align-items:flex-end;justify-content:flex-end;pointer-events:none}
+.touch #mobile-enter{background:#e6f5a7d9;color:#20342a;border-color:#e6f5a7;font-weight:700}
+.touch #mobile-jump{background:#8fb7bdd0;border-color:#cfe6e6aa}
 .touch .topbar{height:56px;margin:0 max(16px,env(safe-area-inset-left)) 0 max(16px,env(safe-area-inset-right));border:0}
 .touch .brand-mark{font-size:23px;padding:0 7px 4px 4px;border:0}
 .touch .brand-title{font-size:17px;letter-spacing:1px}
@@ -68,4 +66,4 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .touch .crosshair{font-size:26px}
 .touch .map-tools button{padding:9px 6px}
 @media (max-width:560px){.touch .phone{width:min(94vw,392px);height:calc(100dvh - 12px);right:6px;bottom:6px}.touch .bottom-left{width:132px}.touch .vehicle-hud{width:118px}}
-@media (max-height:430px){.touch .mobile-controls button{width:50px;height:50px}.touch .dpad{grid-template-columns:repeat(3,50px);grid-auto-rows:50px}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}}
+@media (max-height:430px){.touch .mobile-controls button{width:54px;height:54px}.touch .joystick{width:112px;height:112px}.touch .joystick-knob{width:50px;height:50px;margin:-25px 0 0 -25px}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}}

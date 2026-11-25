@@ -272,71 +272,176 @@ export function createWorld(scene) {
   interactables.push({ type: 'info', name: '校史导览 · 后续任务', x: -250, z: -636, y: 0, message: '校史导览、校园跑腿与图书馆任务将在这里接入。' });
   interactables.push({ type: 'info', name: '借阅馆藏', x: -262, z: -650, y: 0, message: '翻阅馆藏：南京城市史与校园建筑档案。' });
 
+  // Multi-storey, walk-in buildings used by the delivery jobs.
+  const towers = [];
+  function tower(opts) {
+    const { name, x, z, w, d, levels, h, color = '#c9c1ae', food = false } = opts;
+    const trim = '#b3a58e';
+    for (let f = 0; f < levels; f++) {
+      const y = f * h;
+      if (f === 0) {
+        solid(w, 3, .4, trim, x, 1.5, z - d / 2);
+        solid(.4, 3, d, trim, x - w / 2, 1.5, z);
+        solid(.4, 3, d, trim, x + w / 2, 1.5, z);
+        const side = (w - 4) / 2, sx = side / 2 + 2;
+        solid(side, 3, .4, trim, x - sx, 1.5, z + d / 2);
+        solid(side, 3, .4, trim, x + sx, 1.5, z + d / 2);
+        box(4.6, .12, 2.4, '#b9b6a3', x, .07, z + d / 2 + .6);
+      } else {
+        solid(w, h, .4, trim, x, y + h / 2, z - d / 2);
+        solid(.4, h, d, trim, x - w / 2, y + h / 2, z);
+        solid(.4, h, d, trim, x + w / 2, y + h / 2, z);
+        solid(w, h, .4, trim, x, y + h / 2, z + d / 2);
+      }
+      floor(x, z, w - .7, d - .7, y);
+      if (f > 0) for (const side of [-1, 1]) box(w - 3, 1.1, .16, '#6f8f96', x, y + h * .55, z + side * (d / 2 - .3), scene, { transparent: true, opacity: .55 });
+    }
+    label(name, x, levels * h + 2.4, z + d / 2 + .3, Math.min(w * .8, 30));
+    // Straight internal stairs, alternating direction each level.
+    const lane = z - d / 2 + 3.4, margin = 2.4, run = w - margin * 2;
+    for (let f = 0; f < levels - 1; f++) {
+      const dir = f % 2 ? 1 : -1, y = f * h;
+      const a = new THREE.Vector3(x - dir * run / 2, y, lane), b = new THREE.Vector3(x + dir * run / 2, y + h, lane);
+      floors.push({ type: 'stair', start: a, end: b, width: 2.8, base: y, rise: h });
+      const steps = Math.round(run / .85);
+      for (let i = 0; i < steps; i++) {
+        const t = (i + .5) / steps;
+        box(run / steps + .05, .22, 2.8, '#b2aa97', THREE.MathUtils.lerp(a.x, b.x, t), y + t * h - .11, lane);
+      }
+      box(.18, .95, 2.9, '#7c8a80', a.x, y + .47, lane);
+      box(.18, .95, 2.9, '#7c8a80', b.x, y + h - .47, lane);
+    }
+    if (food) {
+      const fy = (levels - 1) * h, counterZ = z - d / 2 + 5.2;
+      solid(9, 1.1, 2, '#8a6c4f', x, fy + .55, counterZ);
+      solid(2.4, 1.5, 1.2, '#a8896a', x - 5.6, fy + .75, counterZ - .6);
+      interactables.push({ type: 'food', name: '取餐 · 德基美食档', x, z: counterZ + 2.2, y: fy });
+      label(`美食档 · ${levels}F`, x, fy + 2.8, counterZ - 1.1, 12);
+    }
+    for (let f = 0; f < levels; f++) for (let i = 0; i < 3; i++) {
+      box(3.2, .85, 2, '#9a8a72', x - 9 + i * 9, f * h + .43, z + d / 2 - 5);
+      box(3, .1, 1.8, '#c8bfa8', x - 9 + i * 9, f * h + .9, z + d / 2 - 5);
+    }
+    const building = { name, x, z, w, d, levels, h, food, doorX: x + w / 2 - 1.2, doorZ: z + 2 };
+    towers.push(building);
+    return building;
+  }
+  tower({ name: '德基广场', x: -150, z: 150, w: 46, d: 36, levels: 3, h: 4.5, food: true });
+  for (const [name, x, z] of [['石鼓路小区', -60, 320], ['张府园公寓', 120, 480], ['珠江路小区', -100, -300]]) {
+    const t = tower({ name, x, z, w: 22, d: 20, levels: 6, h: 3 });
+    for (let f = 1; f < t.levels; f++) {
+      const y = f * t.h;
+      box(.16, 2.15, 1.25, '#7a5f45', x + t.w / 2 - .28, y + 1.07, z + 3.2);
+      box(2.6, .28, 1.5, '#8f9c8b', x + t.w / 2 - .6, y + 2.35, z + 3.2);
+      interactables.push({ type: 'delivery', name: `${name} · ${f + 1}0${f}室`, x: t.doorX, z: z + 3.2, y, building: name, floor: f, room: `${f + 1}0${f}` });
+      label(`${f + 1}0${f}`, x + t.w / 2 - .1, y + 1.6, z + 3.2, 2.2, scene, Math.PI / 2);
+    }
+  }
+  // Helipad and a short airstrip on open ground.
+  const helipad = { x: 60, z: 150 };
+  box(22, .12, 22, '#55605c', helipad.x, .04, helipad.z);
+  box(3.4, .12, 3.4, '#dfe7c8', helipad.x - 5, .08, helipad.z); box(3.4, .12, 3.4, '#dfe7c8', helipad.x + 5, .08, helipad.z);
+  box(.9, .12, 11, '#dfe7c8', helipad.x, .08, helipad.z); box(9, .12, .9, '#dfe7c8', helipad.x, .08, helipad.z);
+  label('HELIPAD · 新街口', helipad.x, 3.2, helipad.z + 11.4, 18);
+  const airstrip = { x: -80, z: 400 };
+  box(16, .1, 78, '#4f5855', airstrip.x, .03, airstrip.z);
+  for (let i = -3; i <= 3; i++) box(1.1, .04, 7, '#d9dcc4', airstrip.x, .1, airstrip.z + i * 11);
+  label('金陵飞行场', airstrip.x, 2.6, airstrip.z + 40, 16);
+
   // Metro: Line 1 (north-south) and Line 2 (east-west), with real station order.
-  const B1 = -7;
+  // All station rooms share one cross-section: track at local x -5, platform from
+  // -3.3 to 3.3, room from -9 to 5.5. Trains sit 1.1 m lower so their floor meets
+  // the platform at -7 m. Tunnels join the rooms between stations.
+  const B1 = -7, TRAIN_DROP = 1.1;
   function metroLine(name, color, start, end, defs) {
-    const curve = new THREE.LineCurve3(new THREE.Vector3(start[0], B1, start[1]), new THREE.Vector3(end[0], B1, end[1]));
-    const length = curve.getLength(), line = { name, color, curve, length, stations: [] };
-    metroLines.push(line);
-    const tangent = new THREE.Vector3().subVectors(curve.v2, curve.v1).normalize();
+    const tangent = new THREE.Vector3(end[0] - start[0], 0, end[1] - start[1]).normalize();
     const angle = Math.atan2(tangent.x, tangent.z);
     const normal = new THREE.Vector3(Math.cos(angle), 0, -Math.sin(angle));
-    const track = box(8, .3, length, '#3e4c4e', (start[0] + end[0]) / 2, B1 - .32, (start[1] + end[1]) / 2);
-    track.rotation.y = angle;
+    const curve = new THREE.LineCurve3(new THREE.Vector3(start[0], B1 - TRAIN_DROP, start[1]), new THREE.Vector3(end[0], B1 - TRAIN_DROP, end[1]));
+    const length = curve.getLength(), line = { name, color, curve, length, start, end, tangent, normal, angle, stations: [] };
+    metroLines.push(line);
+    const mid = new THREE.Vector3((start[0] + end[0]) / 2, B1, (start[1] + end[1]) / 2);
+    const track = box(8, .3, length, '#3e4c4e', mid.x, B1 - .32, mid.z); track.rotation.y = angle;
     for (const side of [-1, 1]) {
-      const rail = box(.13, .15, length, '#a9b7b7', (start[0] + end[0]) / 2 + Math.cos(angle) * side * 1.7, B1 - .05, (start[1] + end[1]) / 2 - Math.sin(angle) * side * 1.7);
+      const rail = box(.13, .15, length, '#a9b7b7', mid.x + Math.cos(angle) * side * 1.7, B1 - .05, mid.z - Math.sin(angle) * side * 1.7);
       rail.rotation.y = angle;
     }
     for (const def of defs) {
-      const [x, z, shift] = def;
+      const [x, z, shift, stationName] = def;
       const p = new THREE.Vector3(x, B1, z);
-      const center = p.clone().addScaledVector(tangent, shift).addScaledVector(normal, 6);
+      const center = p.clone().addScaledVector(tangent, shift).addScaledVector(normal, 5);
+      center.y = B1;
+      origin.copy(center);
       const group = new THREE.Group(); group.position.copy(center); group.rotation.y = angle; scene.add(group);
-      // A compact sunken B1 room: platform beside the track, solid retaining walls.
-      box(20, .28, 54, '#aeb5a7', 0, -.14, 0, group);
-      box(8, .1, 50, '#9fa99d', -2, .02, 0, group);
-      box(.45, .08, 48, '#e0c37c', -4, .08, 0, group);
-      box(20, 4, .35, '#8e9a90', 0, 2, -27, group, true);
-      box(20, 4, .35, '#8e9a90', 0, 2, 27, group, true);
-      box(.35, 4, 54, '#8e9a90', -10, 2, 0, group, true);
-      box(.35, 4, 18, '#8e9a90', 8, 2, -18, group, true);
-      box(.35, 4, 18, '#8e9a90', 8, 2, 18, group, true);
-      box(10, 3.2, .25, '#8e9a90', 3, 1.6, -27, group, true);
-      box(10, 3.2, .25, '#8e9a90', 3, 1.6, 27, group, true);
-      // Platform screen doors, clearly interrupted at the train doorway.
-      for (const zz of [-20, 20]) box(.14, 2.6, 12, '#7fa3a3', -4.1, 1.3, zz, group, { transparent: true, opacity: .5 });
-      for (const zz of [-9, 9]) box(.14, 2.6, 9, '#7fa3a3', -4.1, 1.3, zz, group, { transparent: true, opacity: .5 });
-      // Ticket gates, benches, route map and lights.
-      for (const zz of [-3.4, 3.4]) { box(1.2, .9, .3, '#b9c3b4', 2.8, .45, zz, group); box(.18, .95, .4, '#d6a06e', 2.4, .48, zz, group); }
-      for (const zz of [-16, -6, 6, 16]) { box(4, .5, 1, '#7c8c80', 5.2, .25, zz, group); box(4, .1, .9, '#d4d8c4', 5.2, .55, zz, group); }
-      for (const zz of [-24, -12, 0, 12, 24]) { box(.3, 3.2, .3, '#a8b2a5', 7.2, 1.6, zz, group); box(1.4, .12, 1.4, '#fff1c2', 7.2, 3.25, zz, group, true); }
-      const mapBoard = box(.18, 1.9, 3.6, '#2e4a4c', 7.6, 1.5, 0, group); label(`M · ${def[3]}`, 7.72, 1.6, 0, 2.9, group, -Math.PI / 2);
-      label(`M · ${def[3]} · 1号线`, 0, 3.4, -27.2, 12, group);
-      // Street-level stair entrance: 7 m down to the B1 platform.
-      const startStep = center.clone().addScaledVector(normal, 4);
-      const endStep = center.clone().addScaledVector(normal, 18);
-      for (let i = 0; i < 16; i++) {
-        const q = startStep.clone().lerp(endStep, (i + .5) / 16);
-        const step = box(.88, .26, 5.2, '#b9c2b2', q.x, B1 + (i + .5) * 7 / 16 - .1, q.z);
+      const part = (w, h, d, color, lx, y, lz, extra) => box(w, h, d, color, lx, y, lz, group, extra);
+      const swap = Math.abs(Math.sin(angle)) > .5;
+      const toWorld = (lx, lz) => ({ x: center.x + lx * Math.cos(angle) + lz * Math.sin(angle), z: center.z - lx * Math.sin(angle) + lz * Math.cos(angle) });
+      const wall = (lx, lz, w, d, h = 4, y = 2, color = '#8e9a90') => {
+        const mesh = part(w, h, d, color, lx, y, lz, true), world = toWorld(lx, lz);
+        solids.push({ x: world.x, z: world.z, hw: swap ? d / 2 : w / 2, hd: swap ? w / 2 : d / 2, low: center.y + y - h / 2, high: center.y + y + h / 2, mesh });
+        return mesh;
+      };
+      const invisible = (lx, lz, w, d, low, high) => {
+        const world = toWorld(lx, lz);
+        solids.push({ x: world.x, z: world.z, hw: swap ? d / 2 : w / 2, hd: swap ? w / 2 : d / 2, low, high });
+      };
+      // Platform slab, yellow edge, retaining walls and a real ceiling.
+      part(6.6, .28, 50, '#aeb5a7', 0, -.14, 0);
+      part(6.2, .07, 48, '#9fa99d', 0, .035, 0);
+      part(.34, .1, 46, '#e0c37c', -3.06, .09, 0);
+      wall(-9.15, 0, .3, 54.3);
+      wall(5.65, -15.2, .3, 23.6);
+      wall(5.65, 15.2, .3, 23.6);
+      wall(-1.75, -27.15, 14.9, .3);
+      wall(-1.75, 27.15, 14.9, .3);
+      wall(-1.75, 0, 14.9, 54.6, .4, 4.1, '#a9b2a4');
+      // Platform screen doors (visual) plus a solid barrier at the platform edge.
+      for (const lz of [-14.5, 14.5]) part(.1, 2.6, 21, '#7fa3a3', -3.3, 1.3, lz, { transparent: true, opacity: .42 });
+      for (const lz of [-24, -6, 6, 24]) part(.08, 1.5, 2.4, '#8fb3b0', -3.3, 1.9, lz, { transparent: true, opacity: .5 });
+      invisible(-3.45, 0, .3, 50, B1, B1 + 2.9);
+      // Ticket gates, benches, route map and ceiling lights.
+      for (const lz of [-3.4, 3.4]) { part(1.2, .9, .3, '#b9c3b4', 2.6, .45, lz); part(.18, .95, .4, '#d6a06e', 2.2, .48, lz); }
+      for (const lz of [-17, -10, 10, 17]) { part(3.4, .5, 1, '#7c8c80', 2.2, .25, lz); part(3.4, .1, .9, '#d4d8c4', 2.2, .55, lz); }
+      for (const lz of [-22, -11, 11, 22]) { part(.24, 3.1, .24, '#a8b2a5', 2.9, 1.55, lz); part(1.2, .12, 1.2, '#fff1c2', 2.9, 3.1, lz, true); }
+      part(.16, 1.8, 3.4, '#2e4a4c', 5.4, 2.15, -8);
+      label(`M · ${stationName}`, 5.3, 2.15, -8, 2.9, group, -Math.PI / 2);
+      part(.16, 1.8, 3.4, '#2e4a4c', 5.4, 2.15, 8);
+      label(`M · ${line.name}`, 5.3, 2.15, 8, 2.9, group, -Math.PI / 2);
+      label(`地铁 · ${stationName}`, 0, 3.5, 26.9, 12, group, Math.PI);
+      // Street stairs: platform edge (local 3.3) up to the pavement (local 20).
+      const stairStart = center.clone().addScaledVector(normal, 3.3);
+      const stairEnd = center.clone().addScaledVector(normal, 20);
+      const run = stairStart.distanceTo(stairEnd), steps = Math.max(14, Math.round(run / .95));
+      for (let i = 0; i < steps; i++) {
+        const q = stairStart.clone().lerp(stairEnd, (i + .5) / steps);
+        const step = box(run / steps + .05, .26, 5.2, '#b9c2b2', q.x, B1 + (i + .5) * 7 / steps - .13, q.z);
         step.rotation.y = angle;
       }
-      const stairEdge1 = endStep.clone().addScaledVector(tangent, 3.1);
-      const stairEdge2 = endStep.clone().addScaledVector(tangent, -3.1);
-      for (const edge of [stairEdge1, stairEdge2]) {
-        const rail = box(.12, 1.1, 15, '#6d8177', edge.x, -.4, edge.z); rail.rotation.y = angle;
+      const wellCenter = center.clone().addScaledVector(normal, 11.75);
+      for (const side of [-1, 1]) {
+        const q = wellCenter.clone().addScaledVector(tangent, side * 3.55);
+        const mesh = box(14.6, 7, .3, '#8e9a90', q.x, B1 + 3.5, q.z); mesh.rotation.y = angle;
+        solids.push({ x: q.x, z: q.z, hw: swap ? .15 : 7.3, hd: swap ? 7.3 : .15, low: B1, high: 0, mesh });
       }
-      const railBack = box(.12, 1.1, 6.2, '#6d8177', endStep.x, -.4, endStep.z); railBack.rotation.y = angle;
-      box(7.5, .3, 6.6, '#aeb5a7', endStep.x, .05, endStep.z);
-      label(`地铁 ${def[3]}`, endStep.x, 3.1, endStep.z, 13);
-      const ramp = { type: 'metroRamp', start: startStep, end: endStep, width: 5, base: B1, rise: 7 };
+      const rail = box(.14, 1.05, 15.4, '#6d8177', stairEnd.x, .35, stairEnd.z); rail.rotation.y = angle;
+      const landing = box(8, .3, 6.8, '#aeb5a7', stairEnd.x, .02, stairEnd.z); landing.rotation.y = angle;
+      label(`地铁 ${stationName}`, stairEnd.x, 3.1, stairEnd.z, 13, scene, angle);
+      const ramp = { type: 'metroRamp', start: stairStart, end: stairEnd, width: 5, base: B1, rise: 7 };
       floors.push(ramp);
-      const distanceAlong = new THREE.Vector3(x, 0, z).sub(new THREE.Vector3(start[0], 0, start[1])).dot(new THREE.Vector3(tangent.x, 0, tangent.z));
-      const station = { name: def[3], line: line.name, t: THREE.MathUtils.clamp(distanceAlong / length + (shift / length), 0, 1), center, normal, angle, entry: endStep.clone().setY(0), ramp, point: p, stair: { start: startStep, end: endStep, width: 5.2 } };
+      const distanceAlong = (x - start[0]) * tangent.x + (z - start[1]) * tangent.z;
+      const station = {
+        name: stationName, line: line.name,
+        t: THREE.MathUtils.clamp((distanceAlong + shift) / length, 0, 1),
+        center, normal, angle, entry: stairEnd.clone().setY(0), ramp, point: p,
+        stair: { start: stairStart, end: stairEnd, width: 5.2, holeStart: center.clone().addScaledVector(normal, 5.5), holeEnd: stairEnd.clone() },
+        stop: p.clone().addScaledVector(tangent, shift),
+      };
       line.stations.push(station); stationList.push(station);
     }
     line.stations.sort((a, b) => a.t - b.t);
     return line;
   }
+  const origin = new THREE.Vector3();
   metroLine('1号线', '#e28689', [0, -820], [0, 980], [
     [0, -760, 34, '鼓楼'], [0, -420, -24, '珠江路'], [0, 0, -30, '新街口'], [0, 430, 0, '张府园'], [0, 760, 0, '三山街'],
   ]);
@@ -344,16 +449,74 @@ export function createWorld(scene) {
     [-500, 0, 20, '上海路'], [0, 0, -36, '新街口'], [430, 0, -24, '大行宫'],
   ]);
 
-  // Only the stair entrances cut the street surface; the B1 room is below ground.
+  // Tunnels between stations: walls and ceilings with openings where lines cross.
+  function tunnel(line, ceilingLift) {
+    const zones = line.stations.map(s => s.t).sort((a, b) => a - b), half = 27.2 / line.length;
+    const segments = []; let cursor = 0;
+    for (const t of zones) { const a = t - half, b = t + half; if (a - cursor > .0005) segments.push([cursor, Math.min(1, a)]); cursor = Math.max(cursor, b); }
+    if (cursor < .9995) segments.push([Math.max(0, cursor), 1]);
+    const others = metroLines.filter(other => other !== line);
+    const tan = new THREE.Vector2(line.tangent.x, line.tangent.z);
+    for (const [t0, t1] of segments) {
+      const a = line.curve.getPointAt(t0), b = line.curve.getPointAt(t1), m = a.clone().lerp(b, .5); m.y = B1;
+      const len = a.distanceTo(b);
+      const gaps = [];
+      for (const other of others) {
+        const oc = new THREE.Vector2((other.start[0] + other.end[0]) / 2, (other.start[1] + other.end[1]) / 2);
+        const on = new THREE.Vector2(other.normal.x, other.normal.z), ot = new THREE.Vector2(other.tangent.x, other.tangent.z);
+        const denom = tan.x * on.x + tan.y * on.y;
+        if (Math.abs(denom) < .01) continue;
+        for (const offset of [-4, 10.5]) {
+          const base = (m.x - oc.x) * on.x + (m.z - oc.y) * on.y;
+          const u = (offset - base) / denom;
+          // other line's tunnel extent along our wall
+          const along = (m.x + tan.x * u - oc.x) * ot.x + (m.z + tan.z * u - oc.y) * ot.y;
+          if (Math.abs(along) > other.length / 2 + 30) continue;
+          gaps.push([u - 2.5, u + 2.5]);
+        }
+      }
+      const pieces = (from, to) => {
+        let list = [[from, to]];
+        for (const [g0, g1] of gaps) {
+          list = list.flatMap(([p0, p1]) => {
+            if (g1 <= p0 || g0 >= p1) return [[p0, p1]];
+            const out = [];
+            if (g0 > p0) out.push([p0, Math.min(g0, p1)]);
+            if (g1 < p1) out.push([Math.max(g1, p0), p1]);
+            return out;
+          });
+        }
+        return list.filter(([p0, p1]) => p1 - p0 > .4);
+      };
+      const build = (offset, width, height, y, color, useGaps = true) => {
+        const list = useGaps ? pieces(-len / 2, len / 2) : [[-len / 2, len / 2]];
+        for (const [p0, p1] of list) {
+          const u = (p0 + p1) / 2, q = m.clone().addScaledVector(line.normal, offset).addScaledVector(line.tangent, u);
+          const mesh = box(width, height, p1 - p0, color, q.x, y, q.z); mesh.rotation.y = line.angle;
+          const hw = Math.abs(Math.sin(line.angle)) > .5 ? (p1 - p0) / 2 : width / 2;
+          const hd = Math.abs(Math.sin(line.angle)) > .5 ? width / 2 : (p1 - p0) / 2;
+          solids.push({ x: q.x, z: q.z, hw, hd, low: y - height / 2, high: y + height / 2, mesh });
+        }
+      };
+      build(-4.15, .3, 5.6, -5.8, '#5c6b68');
+      build(10.65, .3, 5.6, -5.8, '#5c6b68');
+      build(7.25, 6.6, .3, -7.15, '#8e9a90');
+      build(3.25, 14.9, .4, -2.9 + ceilingLift, '#a9b2a4', false);
+    }
+  }
+  tunnel(metroLines[0], 0);
+  tunnel(metroLines[1], .06);
+
+  // Only the street stairwells cut the surface; the B1 rooms sit under the road.
   const terrainShape = new THREE.Shape();
   terrainShape.moveTo(bounds.minX, bounds.minZ); terrainShape.lineTo(bounds.maxX, bounds.minZ);
   terrainShape.lineTo(bounds.maxX, bounds.maxZ); terrainShape.lineTo(bounds.minX, bounds.maxZ); terrainShape.closePath();
   for (const station of stationList) {
     const n = station.normal, t = new THREE.Vector3(Math.sin(station.angle), 0, Math.cos(station.angle));
     const corners = [];
-    for (const point of [station.stair.start, station.stair.end]) for (const b of [-3.2, 3.2]) corners.push(point.clone().addScaledVector(t, b));
-    const minX = Math.min(...corners.map(p => p.x)) - .6, maxX = Math.max(...corners.map(p => p.x)) + .6;
-    const minZ = Math.min(...corners.map(p => p.z)) - .6, maxZ = Math.max(...corners.map(p => p.z)) + .6;
+    for (const point of [station.stair.holeStart, station.stair.holeEnd]) for (const b of [-3.45, 3.45]) corners.push(point.clone().addScaledVector(t, b));
+    const minX = Math.min(...corners.map(p => p.x)) - .5, maxX = Math.max(...corners.map(p => p.x)) + .5;
+    const minZ = Math.min(...corners.map(p => p.z)) - .5, maxZ = Math.max(...corners.map(p => p.z)) + .5;
     const hole = new THREE.Path(); hole.moveTo(minX, minZ); hole.lineTo(minX, maxZ); hole.lineTo(maxX, maxZ); hole.lineTo(maxX, minZ); hole.closePath();
     terrainShape.holes.push(hole);
   }
@@ -362,8 +525,8 @@ export function createWorld(scene) {
   box(400, .18, 2500, '#d7c29c', 1324, -.15, 0);
 
   // Building lots follow the road hierarchy, leaving campus, plazas and stations clear.
-  const reserved = (x, z) => {
-    const inRect = (x1, z1, x2, z2) => x > x1 && x < x2 && z > z1 && z < z2;
+  const reserved = (x, z, w = 0, d = 0) => {
+    const inRect = (x1, z1, x2, z2) => x > x1 - w / 2 && x < x2 + w / 2 && z > z1 - d / 2 && z < z2 + d / 2;
     if (inRect(-486, -716, -144, -444)) return true;
     if (inRect(-158, -678, -82, -622)) return true;
     if (inRect(66, 48, 134, 126)) return true;
@@ -373,6 +536,12 @@ export function createWorld(scene) {
     if (inRect(12, -798, 168, -682)) return true;
     if (inRect(748, 62, 904, 226)) return true;
     if (inRect(-46, -46, 134, 134)) return true;
+    if (inRect(-178, 122, -122, 178)) return true;
+    if (inRect(-80, 300, -40, 340)) return true;
+    if (inRect(100, 460, 140, 500)) return true;
+    if (inRect(-120, -320, -80, -280)) return true;
+    if (inRect(46, 136, 74, 164)) return true;
+    if (inRect(-110, 350, -50, 450)) return true;
     const lakeD = ((x - 650) / 430) ** 2 + ((z + 1000) / 250) ** 2; if (lakeD < 1.15) return true;
     if (z > 860 && z < 950 && x > -1020 && x < 1100) return true;
     if (stationList.some(s => Math.hypot(x - s.entry.x, z - s.entry.z) < 62)) return true;
@@ -403,7 +572,7 @@ export function createWorld(scene) {
   for (let attempt = 0; attempt < 8000 && buildings.length < 440; attempt++) {
     const x = -1120 + rand() * 2240, z = -1220 + rand() * 2440;
     const w = 22 + rand() * 30, d = 22 + rand() * 28;
-    if (reserved(x, z)) continue;
+    if (reserved(x, z, w, d)) continue;
     let near = null, nd = Infinity;
     for (const r of roads) { const dist = distanceToSegment(x, z, r.a, r.b); if (dist.distance < nd) { nd = dist.distance; near = r; } }
     if (!near) continue;
@@ -441,11 +610,14 @@ export function createWorld(scene) {
     { name: bank.name, x: -110, z: -70, interior: true },
     { name: hotel.name, x: -120, z: -626, interior: true },
     { name: library.name, x: -250, z: -633, interior: true },
+    ...towers.map(t => t.food
+      ? { name: `${t.name} · 美食档 ${t.levels}F`, x: t.x, z: t.z - t.d / 2 + 7.4, interior: true }
+      : { name: t.name, x: t.x, z: t.z + t.d / 2 + 3, interior: true }),
     ...stationList.map(s => ({ name: `地铁 ${s.line} · ${s.name}`, x: s.entry.x, z: s.entry.z })),
     ...districts.map(d => ({ name: d.name, x: d.x, z: d.z })),
   ];
 
-  return { box, solid, label, material, solids, floors, interactables, buildings, roads, nodes, stations: stationList, metroLines, hotel, lift: liftState, places, water, campusGround, terrainMesh };
+  return { box, solid, label, material, solids, floors, interactables, buildings, roads, nodes, stations: stationList, metroLines, hotel, lift: liftState, places, water, campusGround, terrainMesh, towers, helipad, airstrip };
 }
 
 export function distanceToSegment(x, z, a, b) {
