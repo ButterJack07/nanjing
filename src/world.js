@@ -64,6 +64,19 @@ export const busDepots = [
   { name: '大行宫公交场', x: 820, z: 150, r: 62 },
 ];
 
+// Bus stops live on the road centreline so the route bus can actually reach
+// them; `vertical` picks which side the platform sits on.
+export const busStops = [
+  { name: '鼓楼公交场', x: 140, z: -660, vertical: true },
+  { name: '鼓楼', x: -46, z: -760, vertical: true },
+  { name: '珠江路', x: -46, z: -420, vertical: true },
+  { name: '新街口', x: -46, z: 70, vertical: false },
+  { name: '大行宫', x: 500, z: 36, vertical: false },
+  { name: '大行宫公交场', x: 790, z: 140, vertical: true },
+];
+export const busDepot = { x: 134, z: -655 };
+export const spawn = { x: 26, z: 40 };
+
 export function createWorld(scene) {
   const materials = new Map(), solids = [], floors = [], interactables = [], buildings = [], roads = [], nodes = [], stationList = [], metroLines = [];
   const water = [];
@@ -617,7 +630,7 @@ export function createWorld(scene) {
     ...districts.map(d => ({ name: d.name, x: d.x, z: d.z })),
   ];
 
-  return { box, solid, label, material, solids, floors, interactables, buildings, roads, nodes, stations: stationList, metroLines, hotel, lift: liftState, places, water, campusGround, terrainMesh, towers, helipad, airstrip };
+  return { box, solid, label, material, solids, floors, interactables, buildings, roads, nodes, stations: stationList, metroLines, hotel, lift: liftState, places, water, campusGround, terrainMesh, towers, helipad, airstrip, bounds, districts, busStops, busDepot, spawn };
 }
 
 export function distanceToSegment(x, z, a, b) {

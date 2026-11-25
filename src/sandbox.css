@@ -20,6 +20,26 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .touch .mobile-actions{display:flex;gap:10px;align-items:flex-end;justify-content:flex-end;pointer-events:none}
 .touch #mobile-enter{background:#e6f5a7d9;color:#20342a;border-color:#e6f5a7;font-weight:700}
 .touch #mobile-jump{background:#8fb7bdd0;border-color:#cfe6e6aa}
+/* Touch driving: on-screen steer + throttle/brake + gear, alongside tilt steering. */
+.touch.drive-mode .joystick,.touch.drive-mode .mobile-actions{display:none}
+.drive-controls{position:absolute;inset:0;display:none;pointer-events:none;z-index:2}
+.touch.drive-mode .drive-controls{display:block}
+.touch .drive-steer{position:absolute;left:0;bottom:0;display:flex;gap:12px;pointer-events:none}
+.touch .drive-steer button{pointer-events:auto;touch-action:none;width:78px;height:70px;font-size:26px;background:#12262bd0;border:1px solid #ffffff55;border-radius:14px;color:#e7efdb}
+.touch .drive-steer button:active{background:#dff2a4bb;color:#1d2c24}
+.touch .drive-pedals{position:absolute;right:0;bottom:0;display:grid;grid-template-columns:1fr 1fr;gap:9px;width:172px;pointer-events:none}
+.touch .drive-pedals button{pointer-events:auto;touch-action:none;width:auto;height:56px;font-size:15px;font-weight:700;background:#12262bd0;border:1px solid #ffffff55;border-radius:12px;color:#e7efdb}
+.touch .drive-pedals button:active{background:#dff2a4bb;color:#1d2c24}
+.touch #drive-throttle{background:#e6f5a7d9;color:#20342a;border-color:#e6f5a7}
+.touch #drive-brake{background:#c98a6bd0;border-color:#f3bf9b88;color:#2b211b}
+.touch #drive-gear{background:#8fb7bdd0;border-color:#cfe6e6aa;font-size:16px}
+.touch #drive-exit{background:#ffffff18;border-color:#ffffff40;font-size:13px}
+.touch .drive-pedals .drive-calibrate{grid-column:1/-1;height:38px;font-size:12px;background:#12262b9c;border-color:#ffffff33;color:#c9d6c5}
+.fly-only{display:none}
+.touch.fly-mode .fly-only{display:block}
+.touch.fly-mode #drive-gear{display:none}
+.touch.drive-mode .vehicle-hud{bottom:200px}
+.touch.drive-mode .combat-hud{bottom:196px}
 .touch .topbar{height:56px;margin:0 max(16px,env(safe-area-inset-left)) 0 max(16px,env(safe-area-inset-right));border:0}
 .touch .brand-mark{font-size:23px;padding:0 7px 4px 4px;border:0}
 .touch .brand-title{font-size:17px;letter-spacing:1px}
@@ -66,4 +86,23 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .touch .crosshair{font-size:26px}
 .touch .map-tools button{padding:9px 6px}
 @media (max-width:560px){.touch .phone{width:min(94vw,392px);height:calc(100dvh - 12px);right:6px;bottom:6px}.touch .bottom-left{width:132px}.touch .vehicle-hud{width:118px}}
-@media (max-height:430px){.touch .mobile-controls button{width:54px;height:54px}.touch .joystick{width:112px;height:112px}.touch .joystick-knob{width:50px;height:50px;margin:-25px 0 0 -25px}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}}
+@media (max-height:430px){.touch .mobile-controls button{width:54px;height:54px}.touch .joystick{width:112px;height:112px}.touch .joystick-knob{width:50px;height:50px;margin:-25px 0 0 -25px}.touch .vehicle-hud{bottom:142px}.touch .combat-hud{bottom:136px}.touch .world-prompt{bottom:140px}.touch .bottom-left .map-wrap{height:82px}.touch .drive-pedals{width:158px}.touch .drive-pedals button{height:48px;font-size:13px}.touch .drive-steer button{width:70px;height:60px}.touch .drive-pedals .drive-calibrate{height:34px}.touch.drive-mode .vehicle-hud{bottom:172px}.touch.drive-mode .combat-hud{bottom:168px}}
+
+/* Startup map selection. */
+.map-select{position:absolute;inset:0;z-index:72;display:flex;flex-direction:column;align-items:center;justify-content:center;gap:22px;padding:40px;text-align:center;background:radial-gradient(circle at 50% 28%,#2a4a4f,#0f1d21 78%);color:#eaf0da}
+.map-select[hidden]{display:none}
+.map-select-head .eyebrow{font-size:10px;letter-spacing:3px;color:#9fb3a6}
+.map-select-head h1{margin:10px 0;font:800 36px 'Barlow Condensed',sans-serif;letter-spacing:3px}
+.map-select-head p{margin:0;font-size:12px;color:#b9cbbd}
+.map-cards{display:flex;gap:22px;flex-wrap:wrap;justify-content:center}
+.map-card{width:300px;max-width:86vw;border:1px solid #ffffff2e;border-radius:16px;overflow:hidden;background:#15262b;color:inherit;text-align:left;padding:0;transition:transform .15s,border-color .15s}
+.map-card:hover{transform:translateY(-4px);border-color:#dcf78d99}
+.map-card-art{height:132px}
+.card-nanjing .map-card-art{background:linear-gradient(135deg,#3d6f6a,#88a06a),repeating-linear-gradient(45deg,#ffffff12 0 6px,#ffffff00 6px 12px)}
+.card-xianlin .map-card-art{background:linear-gradient(135deg,#5c7f49,#c2b98f),repeating-linear-gradient(-45deg,#ffffff14 0 6px,#ffffff00 6px 12px)}
+.map-card-body{padding:16px 18px 20px}
+.map-card-body h2{margin:0 0 8px;font:800 22px 'Barlow Condensed',sans-serif;letter-spacing:1px}
+.map-card-body p{margin:0 0 12px;font-size:11px;line-height:1.7;color:#c2cdc0}
+.map-card-body span{display:inline-block;font-size:11px;font-weight:700;color:#1d2c24;background:#dcf78d;border-radius:20px;padding:6px 14px}
+.map-select-foot{font-size:11px;color:#8fa394;margin:0}
+@media (max-width:640px){.map-card{width:min(88vw,340px)}.map-select-head h1{font-size:26px}.map-card-art{height:104px}}
