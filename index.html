@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="zh-CN">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover" />
+    <meta name="theme-color" content="#131e26" />
+    <title>金陵城区 · 开放世界沙盒</title>
+    <link rel="icon" href="data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 80 80'%3E%3Crect width='80' height='80' rx='18' fill='%23d5f579'/%3E%3Ctext x='9' y='57' font-size='50' font-family='Arial' font-weight='bold'%3EV%3C/text%3E%3C/svg%3E" />
+  </head>
+  <body>
+    <main id="game">
+      <canvas id="world" tabindex="0" aria-label="自由海岸 3D 开放世界游戏，点击后使用 WASD 移动"></canvas>
+      <div class="vignette"></div>
+      <header class="topbar">
+        <a class="brand" href="./" aria-label="Nanjing"><span class="brand-mark">N<span> / </span>J</span><span class="brand-title">NANJING<small>金陵城区 · 自由探索</small></span></a>
+        <div class="session"><span class="live-dot"></span> 自由探索 <span class="divider">/</span> SOLO SESSION <span class="alpha">ALPHA 0.1</span></div>
+        <div class="top-actions"><span class="weather">☀ <b>28°</b><span id="clock">18:42</span></span><button id="hud-button" class="icon-button" aria-label="隐藏界面" title="显示 / 隐藏界面 · Tab">◉</button><button id="phone-button" class="phone-trigger" aria-label="打开手机" title="打开手机 · P"><span>▯</span><kbd>P</kbd></button></div>
+      </header>
+      <section class="location-heading"><div class="eyebrow"><span></span> THE CITY IS YOURS</div><h1>落日未尽，<br />自由正好<span>。</span></h1><p>没有剧本。下一条街，由你决定。</p><div class="location-tag"><span>↗</span> OCEAN DRIVE <i>海滨大道</i></div></section>
+      <aside class="activity"><div class="activity-top"><span class="small-label">街头漫游</span><span class="tag">自由模式</span></div><div class="activity-title"><span class="route-icon">↗</span><div><h2 id="objective-title">沿海岸，去兜个风</h2><p id="objective-description">坐上跑车，探索落日下的海岸线</p></div></div><div class="activity-footer"><span><i class="lime-dot"></i><span id="objective-progress">3 个城市地标等待发现</span></span><span id="mission-count">0 / 3</span></div></aside>
+      <div id="toast" class="toast" role="status"></div>
+      <div id="play-prompt" class="play-prompt"><button id="play-button" class="primary-button">点击进入游戏 ↗</button><p>WASD 移动 · E 上车 · 点击画面激活键盘</p></div>
+      <section class="bottom-left"><div class="map-header"><span><i class="lime-dot"></i><span id="district">OCEAN BEACH</span></span><span>自由海岸 ↗</span></div><div class="map-wrap"><canvas id="minimap" width="264" height="180" aria-label="城市小地图"></canvas><span class="north">N ↑</span><button id="map-button" title="展开地图">⛶</button></div><div class="map-footer"><span class="map-pin">⌖</span><span id="position-label">海滨大道</span><span class="coordinates" id="coordinates">024 / 048</span></div></section>
+      <div class="interaction" id="interaction"><span class="key">E</span><span id="interaction-text">驾驶 <b>COMET S</b></span><span class="interaction-arrow">↗</span></div>
+      <section class="vehicle-hud"><div class="vehicle-label"><span id="mode-icon">◈</span><span id="mode-name">步行探索</span><span class="small-label" id="vehicle-type">ON FOOT</span></div><div class="speed-line"><strong id="speed">00</strong><div><span>KM/H</span><b id="gear">—</b></div></div><div class="speed-track"><div id="speed-bar"></div></div><div class="vehicle-meta"><span><i class="lime-dot"></i><span id="status-label">城市，随你探索</span></span><span id="travel-distance">0.0 KM</span></div></section>
+      <footer class="controls-bar"><div><span class="key-cluster"><kbd>W</kbd><kbd>A</kbd><kbd>S</kbd><kbd>D</kbd></span><span>移动 / 驾驶</span></div><div><kbd>E</kbd><span>上 / 下车</span></div><div><kbd>SHIFT</kbd><span>奔跑 / 加速</span></div><div><kbd>SPACE</kbd><span>跳跃 / 手刹</span></div><div><span class="mouse-icon">↔</span><span>拖动视角</span></div><button id="reset-button"><kbd>R</kbd><span>重置位置</span></button><span class="footer-note">TAKE THE LONG WAY HOME.</span></footer>
+      <div class="mobile-controls"><div class="dpad"><button data-key="KeyW">↑</button><button data-key="KeyA">←</button><button data-key="KeyS">↓</button><button data-key="KeyD">→</button></div><div class="mobile-actions"><button id="mobile-enter">E</button><button data-key="Space">⤒</button><button data-key="ShiftLeft">⇧</button><button id="mobile-fire" hidden>射击</button></div></div>
+      <div id="rotate-overlay" class="rotate-overlay" hidden>
+        <div class="rotate-phone">▭</div>
+        <h2>请横屏游玩</h2>
+        <p>横屏能获得完整视野和更顺手的驾驶按键<br>如系统未自动旋转，请手动打开旋转锁定</p>
+        <button id="rotate-button" class="primary-button">全屏横屏进入</button>
+      </div>
+      <aside id="phone" class="phone" role="dialog" aria-modal="true" aria-label="游戏手机" hidden>
+        <div class="phone-status"><span id="phone-time">18:42</span><span class="phone-island"></span><span>▂▄▆ ▰</span></div>
+        <div class="phone-nav"><button id="phone-back" aria-label="返回手机首页">‹</button><span id="phone-page-title">JINLING OS</span><button id="phone-close" aria-label="收起手机">×</button></div>
+        <div class="phone-content">
+          <section data-page="home"><div class="phone-greeting"><span>金陵城区</span><h2>出去，转一转。</h2><p>所有目的地，都在这里。</p></div><div class="phone-apps"><button data-app="map"><span class="app-icon app-map">⌖</span>地图</button><button data-app="missions"><span class="app-icon app-missions">↗</span>探索<span id="phone-badge" class="app-badge">3</span></button><button data-app="help"><span class="app-icon app-help">⌘</span>操作</button><button data-app="settings"><span class="app-icon app-settings">⚙</span>设置</button></div><div class="phone-widget"><span class="small-label">我的旅程</span><strong id="phone-distance">0.0 <small>KM</small></strong><p id="phone-location">海滨大道 · 步行探索</p></div><p class="phone-home-note">日落很慢，不必赶路。</p></section>
+          <section data-page="map" hidden><div class="phone-map-wrap"><canvas id="phone-map" width="310" height="390" aria-label="完整城市地图"></canvas></div><div class="map-legend"><span>▲ 你的位置</span><span>↗ 待探索地标</span></div><div id="navigation-label" class="navigation-label">点击地标，设置导航</div><div id="map-destinations" class="destination-list"></div><button id="clear-navigation" class="phone-secondary" hidden>结束导航</button></section>
+          <section data-page="missions" hidden><div class="phone-section-label">探索手记</div><div id="phone-mission-slot"></div><div id="landmark-list" class="destination-list"></div></section>
+          <section data-page="help" hidden><div class="phone-section-label">出发前的小抄</div><div class="help-grid"><kbd>W A S D / 方向键</kbd><span>移动 / 驾驶</span><kbd>E</kbd><span>上车 / 下车</span><kbd>Shift</kbd><span>奔跑 / 加速</span><kbd>Space</kbd><span>跳跃 / 手刹</span><kbd>拖动 / 滚轮</kbd><span>旋转 / 缩放镜头</span><kbd>P / Esc</kbd><span>打开 / 收起手机</span><kbd>M</kbd><span>手机地图</span><kbd>Tab</kbd><span>显示 / 隐藏 HUD</span><kbd>R</kbd><span>重置位置</span></div><p class="phone-hint">靠近街边车辆，按 E 开始兜风。找到发光的绿色地标即可完成探索。</p></section>
+          <section data-page="settings" hidden><div class="phone-section-label">按你的习惯来</div><div class="setting-row"><div>引擎声音<small>合成引擎音效</small></div><button id="sound-button" class="setting-toggle"><span id="sound-state">OFF</span></button></div><div class="setting-row"><div>游戏界面<small>小地图与驾驶仪表</small></div><button id="phone-hud-button" class="setting-toggle">ON</button></div><button id="phone-reset" class="phone-secondary">↺ 返回新街口</button><p class="phone-hint">手机打开时暂停游戏操作，收起后继续旅程。</p><div class="phone-about">NANJING<br><span>金陵城区 · ALPHA 0.3</span></div></section>
+        </div><button id="phone-home" class="phone-home" aria-label="返回手机首页"></button>
+      </aside>
+      <div id="navigation-hud" class="navigation-hud" hidden><span>↗</span><span id="navigation-name"></span><b id="navigation-distance"></b><button id="cancel-navigation" aria-label="结束导航">×</button></div>
+      <div id="wanted-hud" class="wanted-hud" hidden><div id="wanted-stars">★☆☆</div><span id="wanted-label">警方追踪中</span><div class="wanted-track"><i id="wanted-progress"></i></div></div>
+      <div id="job-interaction" class="job-interaction" hidden><button id="job-interact-button"><kbd>F</kbd><span id="job-interact-label">取货</span></button></div>
+      <div id="loading"><div class="loading-logo">NANJING<span>金陵城区</span></div><div class="loading-line"></div><p>正在进入金陵城区…</p></div>
+    </main>
+    <script type="module" src="/src/sandbox.js"></script>
+  </body>
+</html>

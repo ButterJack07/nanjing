@@ -1,0 +1,62 @@
+<!doctype html>
+<html lang="zh-CN">
+<head><meta charset="UTF-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>南京中心城区 · 游戏布局草案</title>
+<style>*{box-sizing:border-box}body{margin:0;background:#17272b;color:#e8eddd;font-family:system-ui,"Microsoft YaHei",sans-serif}header{padding:28px 5vw 18px;border-bottom:1px solid #ffffff20}h1{font-size:24px;margin:0 0 10px}header p{color:#b5c7bb;font-size:13px;line-height:1.8;margin:0}.layout{display:grid;grid-template-columns:minmax(0,1fr) 290px;gap:24px;padding:24px 4vw}svg{width:100%;background:#243b3e;border:1px solid #ffffff20;border-radius:12px}aside{font-size:13px;line-height:1.9}h2{font-size:16px;color:#d6ed9e;margin-top:24px}h2:first-child{margin-top:0}ul{padding-left:19px;color:#becdc0}.tag{padding:7px 10px;background:#d6ed9e14;border:1px solid #d6ed9e30;border-radius:5px;color:#d6ed9e;display:inline-block}.note{color:#9fb4aa;font-size:11px}.district{fill:#688078;fill-opacity:.3;stroke:#879c8a;stroke-opacity:.3}.main-road{stroke:#c7c8b0;stroke-width:12;fill:none;stroke-linejoin:round}.secondary{stroke:#879f97;stroke-width:6;fill:none;stroke-linejoin:round}.local{stroke:#607e78;stroke-width:3;fill:none}.road-label{fill:#dae1ce;font-size:11px;paint-order:stroke;stroke:#243b3e;stroke-width:5;stroke-linejoin:round}.place{fill:#eef0d7;font-size:16px;font-weight:600}.sub{fill:#acbfb1;font-size:11px}.poi{fill:#dcf29c;stroke:#243b3e;stroke-width:3}.metro{fill:none;stroke-width:3;stroke-dasharray:7 5;opacity:.75}.water{fill:#467b83}.park{fill:#456952}.block{fill:#526b64;stroke:#243b3e;stroke-width:3}@media(max-width:850px){.layout{grid-template-columns:1fr}aside{display:grid;grid-template-columns:1fr 1fr;gap:20px}h2{margin-top:0}}@media(max-width:500px){aside{display:block}h2{margin-top:20px}}
+</style></head>
+<body><header><h1>南京中心城区 · 游戏布局草案 02</h1><p>北向上，以新街口为中心；补充中心街巷、南京大学鼓楼校区和真实轨道交通站序。<br>道路为关系示意，非测绘底图；校园楼位、地铁出口与公交站杆位置仍需底图校准。虚线公交为游戏候选线，不代表真实运营线路。</p></header>
+<main class="layout"><svg viewBox="0 0 1000 1120" role="img" aria-label="南京中心城区游戏规划：新街口为中心，鼓楼玄武湖在北，夫子庙秦淮河在南">
+<defs><pattern id="grid" width="50" height="50" patternUnits="userSpaceOnUse"><path d="M50 0H0V50" fill="none" stroke="#ffffff" stroke-opacity=".025"/></pattern></defs>
+<rect width="1000" height="1120" fill="url(#grid)"/>
+<path class="park" d="M700 60L940 45 963 420 900 445 820 350 735 265Z"/><path class="water" d="M782 75Q900 55 922 160Q971 240 898 311Q846 350 790 275Q744 235 776 184Q742 135 782 75Z"/>
+<path d="M726 80L720 195 740 290 804 380 907 433" fill="none" stroke="#9c9a78" stroke-width="7" stroke-dasharray="13 5"/>
+<path class="park" d="M805 455Q916 416 970 480L963 790 856 745 813 665Z"/>
+<path class="district" d="M290 220H570V410H280Z"/><path class="district" d="M285 450H590V655H290Z"/>
+<path class="district" d="M615 445H800V650H615Z"/><path class="district" d="M325 700H735V930H310Z"/>
+<g class="block"><path d="M330 475H405V532H330Z"/><path d="M440 475H540V529H440Z"/><path d="M330 570H410V626H330Z"/><path d="M451 573H548V626H451Z"/><path d="M625 483H690V532H625Z"/><path d="M716 480H778V530H716Z"/><path d="M630 573H704V625H630Z"/><path d="M330 265H405V327H330Z"/><path d="M453 265H536V326H453Z"/><path d="M452 358H536V400H452Z"/></g>
+<!-- Core roads are deliberate continuous corridors, not an auto-generated grid. -->
+<path class="main-road" d="M420 210L420 550 428 760 446 972"/>
+<path class="main-road" d="M70 550H420L720 550 940 545"/>
+<path class="main-road" d="M70 210L420 210 665 195 746 180"/>
+<path class="main-road" d="M420 210L350 120 286 45"/>
+<path class="secondary" d="M256 40L270 305 274 555 287 795 306 992"/>
+<path class="secondary" d="M603 100L604 295 596 550 604 790 622 970"/>
+<path class="secondary" d="M690 290L718 422 721 550 737 748"/>
+<path class="secondary" d="M271 350L420 350 596 350 703 342"/>
+<path class="secondary" d="M104 440L274 440 421 441 597 440 720 423"/>
+<path class="secondary" d="M150 687L280 685 425 685 599 682 815 674"/>
+<path class="secondary" d="M95 795L288 795 429 796 606 793 825 780"/>
+<path class="secondary" d="M307 970L445 972 622 970 827 951"/>
+<path class="local" d="M328 350V440M330 550V686M550 440V550M505 686V795M350 795L359 845 401 875M430 838L505 844 559 822 602 832M490 847L482 903 539 927M557 822L575 875 649 902M605 794L660 822 706 807M600 350L657 377 693 365M270 295L220 325 193 387M104 440L158 489 192 550"/>
+<!-- Gulou campus: position anchored by Hankou Road, Guangzhou Road and Shanghai Road. -->
+<path d="M275 249L385 249 391 328 275 329Z" fill="#496c58" stroke="#a9bc8a" stroke-width="2"/>
+<path class="secondary" d="M270 244L421 244M270 334L420 334"/>
+<path class="local" d="M385 244L391 334M297 244L298 280 369 280 370 334M276 306L384 306"/>
+<text x="282" y="268" fill="#e1efbf" font-size="12" font-weight="600">南京大学</text><text x="282" y="285" fill="#e1efbf" font-size="12">鼓楼校区</text>
+<text x="295" y="298" class="sub" style="font-size:8px">内部楼位待底图校准</text>
+<g class="road-label" style="font-size:9px"><text x="319" y="237">汉口路</text><text x="319" y="328">广州路</text><text x="395" y="291" transform="rotate(-90 395 291)">青岛路</text></g>
+<!-- Named local streets form connected blocks, not random decorative segments. -->
+<g class="local"><path d="M325 334L328 350 328 440 328 490 330 550"/><path d="M274 490L330 490 420 491"/><path d="M354 441L354 490"/><path d="M274 522L330 522 420 523"/>
+<path d="M420 393L508 392 598 392"/><path d="M508 350L508 440 506 550"/><path d="M421 490L550 490 596 489"/>
+<path d="M421 620L505 619 599 618"/><path d="M504 550L505 686"/><path d="M330 620L420 620"/><path d="M335 687L338 741 428 741"/>
+<path d="M604 690L663 716 730 714"/><path d="M650 550L653 618 660 683"/><path d="M721 550L785 585 810 640"/>
+<path d="M430 840L490 844 543 844 600 832"/><path d="M543 844L540 884 557 918"/><path d="M490 844L482 903"/><path d="M599 832L623 867 672 900"/><path d="M623 867L677 847 706 807"/><path d="M650 925L658 949 696 970"/><path d="M696 970L706 1009 764 1001"/></g>
+<g class="road-label" style="font-size:9px"><text x="332" y="416">丹凤街</text><text x="282" y="482">华侨路</text><text x="344" y="514">管家桥</text><text x="446" y="385">丹凤街片区支路</text><text x="517" y="414">洪武北路</text><text x="445" y="482">长江路南侧街巷</text><text x="449" y="612">丰富路片区</text><text x="513" y="657">洪武路</text><text x="442" y="834">瞻园路方向</text><text x="552" y="877">贡院街片区</text><text x="711" y="994">箍桶巷片区</text></g>
+<!-- Qinhuai follows the southern old town rather than cutting a rectangular canal. -->
+<path d="M55 1005Q192 1037 297 939Q360 899 430 927Q501 960 557 918Q617 875 672 900Q735 942 819 884Q886 849 957 887" fill="none" stroke="#467b83" stroke-width="20"/>
+<path class="metro" stroke="#e28689" d="M420 90V550L430 730 450 988"/><path class="metro" stroke="#b1aaed" d="M100 550H420L720 550 932 545"/>
+<path class="metro" stroke="#88c8a3" d="M608 96L604 295 650 440 720 550 728 680 665 846 700 1030"/>
+<path class="metro" stroke="#e8bc80" d="M80 210H420L604 209 745 195"/>
+<g fill="#243b3e" stroke="#f0ead0" stroke-width="3"><circle cx="420" cy="210" r="7"/><circle cx="420" cy="350" r="6"/><circle cx="420" cy="550" r="9"/><circle cx="430" cy="730" r="6"/><circle cx="450" cy="988" r="6"/><circle cx="274" cy="550" r="6"/><circle cx="720" cy="550" r="7"/><circle cx="665" cy="846" r="6"/><circle cx="728" cy="680" r="6"/><circle cx="604" cy="295" r="6"/><circle cx="604" cy="209" r="7"/></g>
+<g class="road-label" style="font-size:10px"><text x="432" y="224">鼓楼 1/4</text><text x="431" y="366">珠江路 1</text><text x="432" y="568">新街口 1/2</text><text x="440" y="724">张府园 1</text><text x="454" y="1018">三山街 1</text><text x="228" y="574">上海路 2</text><text x="734" y="536">大行宫 2/3</text><text x="675" y="835">夫子庙 3</text><text x="740" y="696">常府街 3</text><text x="615" y="289">浮桥 3</text><text x="615" y="226">鸡鸣寺 3/4</text></g>
+<g class="road-label"><text x="430" y="303">中山路</text><text x="442" y="733">中山南路</text><text x="160" y="539">汉中路</text><text x="627" y="540">中山东路</text><text x="120" y="196">北京西路</text><text x="505" y="186">北京东路</text><text x="295" y="96" transform="rotate(52 295 96)">中山北路</text><text x="285" y="616" transform="rotate(-90 285 616)">上海路—莫愁路</text><text x="584" y="635" transform="rotate(-90 584 635)">太平北路—太平南路</text><text x="507" y="338">珠江路</text><text x="313" y="429">长江路</text><text x="466" y="674">建邺路</text><text x="466" y="783">升州路—建康路</text><text x="332" y="1000">中华路 · 中华门方向</text></g>
+<g class="place"><text x="355" y="160">鼓楼</text><text x="307" y="386">珠江路</text><text x="320" y="584">新街口</text><text x="725" y="585">大行宫</text><text x="652" y="405">总统府</text><text x="813" y="205">玄武湖</text><text x="846" y="616">明故宫方向</text><text x="539" y="885">夫子庙</text><text x="665" y="976">老门东</text><text x="130" y="715">朝天宫</text></g>
+<g class="sub"><text x="310" y="608">商业核心 · 银行 · 停车场</text><text x="312" y="409">数码商业 · 办公街区</text><text x="630" y="635">文化街区 · 街巷与院落</text><text x="502" y="908">老城街巷 · 秦淮河 · 步行区</text><text x="774" y="365">城墙 / 公园界面</text><text x="92" y="1057">向西：河西与城市扩展预留</text><text x="710" y="60">校园集中建设鼓楼校区</text></g>
+<g class="poi"><circle cx="465" cy="588" r="6"/><circle cx="486" cy="478" r="6"/><circle cx="375" cy="270" r="6"/><rect x="102" y="224" width="12" height="12"/><rect x="860" y="552" width="12" height="12"/></g>
+<g class="sub"><text x="478" y="592">银行：首批室内</text><text x="500" y="482">便利店：首批室内</text><text x="304" y="290">酒店：首批室内</text><text x="85" y="260">西公交场</text><text x="834" y="594">东公交场</text></g>
+<path d="M108 230L108 210 420 210 420 350 596 350 596 550 866 550" stroke="#d8d88b" stroke-width="3" fill="none" stroke-dasharray="3 6"/>
+<g fill="#d8d88b"><circle cx="420" cy="210" r="4"/><circle cx="420" cy="350" r="4"/><circle cx="596" cy="350" r="4"/><circle cx="596" cy="550" r="4"/></g>
+<g stroke="#d8d88b" fill="#243b3e" stroke-width="2"><rect x="407" y="254" width="6" height="13"/><rect x="425" y="254" width="6" height="13"/><rect x="407" y="378" width="6" height="13"/><rect x="425" y="378" width="6" height="13"/><rect x="407" y="585" width="6" height="13"/><rect x="425" y="585" width="6" height="13"/><rect x="682" y="537" width="13" height="6"/><rect x="682" y="557" width="13" height="6"/></g>
+<g class="road-label" style="font-size:9px"><text x="443" y="264">鼓楼医院 · 公交候选</text><text x="443" y="387">中山路·珠江路 · 公交候选</text><text x="442" y="645">新街口南 · 公交候选</text><text x="700" y="514">大行宫东 · 公交候选</text></g>
+<text x="48" y="64" fill="#d7e8c0" font-size="18">N ↑</text><text x="48" y="87" class="sub">概念图 · 不按比例</text>
+<g transform="translate(48 1090)" class="sub"><path d="M0 -5H32" stroke="#c7c8b0" stroke-width="8"/><text x="44">主干道</text><path d="M125 -5H153" stroke="#879f97" stroke-width="5"/><text x="165">次干路</text><path d="M250 -5H278" stroke="#607e78" stroke-width="3"/><text x="290">街巷</text><path d="M365 -5H400" stroke="#d8d88b" stroke-width="3" stroke-dasharray="3 5"/><text x="410">首条公交候选线</text></g>
+</svg><aside><section><span class="tag">草案 02 · 街巷 / 校园 / 交通</span><h2>01 · 中心街巷</h2><p>保留中山路与汉中路—中山东路主轴，补入汉口路、广州路、华侨路、管家桥、洪武路及秦淮街巷。街巷不承担全部过境交通，停车、后门和商店服务空间安排在支路侧。</p><h2>02 · 南京大学鼓楼校区</h2><p>取消仙林校园。鼓楼校区按汉口路 22 号所在片区定位，在鼓楼西南侧、上海路东侧，结合汉口路与广州路组织城市接口。</p><ul><li>汉口路入口：校园与城市步行连接。</li><li>校园内部单独制作放大图，不把示意路径当成真实校内道路。</li><li>北大楼、教学空间、图书馆和院落等需逐一核对楼位后布置。</li><li>内部任务先预留教学、阅读、社交与探索场景。</li></ul></section><section><h2>03 · 地铁按真实站序</h2><ul><li>1 号线：鼓楼 → 珠江路 → 新街口 → 张府园 → 三山街。</li><li>2 号线：上海路 → 新街口 → 大行宫。</li><li>3 号线：鸡鸣寺 → 浮桥 → 大行宫 → 常府街 → 夫子庙。</li><li>4 号线：鼓楼 ↔ 鸡鸣寺。</li></ul><p>线路仅示意站序与换乘关系，不代表精确轨迹。站厅、站台、出口数量和位置待实图校准。</p><h2>04 · 公交站位</h2><p>标出鼓楼医院、中山路·珠江路、新街口南、大行宫东等现实站名候选，双向站位分开绘制。官方实时站位暂未读取成功，具体站杆位置、线路与上下行名称还不能视为已核实。</p><p>两端公交场和黄色虚线是游戏运营规划，不宣称为现实场站或实际公交线路。最终先选一条可核实的实际线路，再落实完整站序。</p><p class="note">本次仅更新规划页；3D 城市仍待依据这份方案重建。图上短街走向、校园边界与局部道路名称为待校准项。</p></section></aside></main></body></html>
