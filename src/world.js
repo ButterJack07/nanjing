@@ -88,7 +88,7 @@ export function createWorld(scene) {
   const cube = new THREE.BoxGeometry(1, 1, 1);
   function box(w, h, d, color, x, y, z, parent = scene, extra = {}) {
     const mesh = new THREE.Mesh(cube, material(color, extra));
-    mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.receiveShadow = true; parent.add(mesh); return mesh;
+    mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; parent.add(mesh); return mesh;
   }
   function solid(w, h, d, color, x, y, z, parent = scene) {
     const mesh = box(w, h, d, color, x, y, z, parent);

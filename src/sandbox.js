@@ -5,6 +5,7 @@ import './sandbox.css';
 import { createWorld, distanceToSegment, findRoute } from './world.js';
 import { createXianlinWorld } from './world-xianlin.js';
 import { createVehicles } from './vehicles.js';
+import { animatePerson } from './characters.js';
 
 const $ = id => document.getElementById(id), canvas = $('world');
 const renderer = new THREE.WebGLRenderer({ canvas, antialias: true, powerPreference: 'high-performance' });
@@ -12,17 +13,26 @@ renderer.setPixelRatio(Math.min(devicePixelRatio, 1.5));
 renderer.outputColorSpace = THREE.SRGBColorSpace;
 renderer.toneMapping = THREE.ACESFilmicToneMapping;
 renderer.toneMappingExposure = 1.15;
+renderer.shadowMap.enabled = true;
+renderer.shadowMap.type = THREE.PCFSoftShadowMap;
 const camera = new THREE.PerspectiveCamera(58, 1, .1, 4300);
 const player = { position: new THREE.Vector3(26, 0, 40), yaw: 0, vy: 0, grounded: true, health: 100, wallet: 500, goods: 0, tools: 3, ammo: 72, weapon: 0, wanted: 0, escape: 0, arrest: 0 };
 let scene = null, world = null, transport = null, avatar = null, mapId = null;
 const VERSION = '0.4.0', BUILD_DATE = '2026-11-25', REPO = 'ButterJack07/nanjing';
+let sunLight = null;
 function makeScene(bg) {
   const s = new THREE.Scene();
   s.background = new THREE.Color(bg);
   s.fog = new THREE.FogExp2(bg, .00075);
-  s.add(new THREE.HemisphereLight('#d5e5e7', '#8e9172', 2.6));
-  const sun = new THREE.DirectionalLight('#ffe0ad', 2.8);
-  sun.position.set(-400, 800, 300); s.add(sun);
+  s.add(new THREE.HemisphereLight('#d5e5e7', '#8e9172', 2.4));
+  const sun = new THREE.DirectionalLight('#ffe6bd', 2.6);
+  sun.castShadow = true;
+  sun.shadow.mapSize.set(2048, 2048);
+  sun.shadow.camera.near = 1; sun.shadow.camera.far = 1400;
+  sun.shadow.camera.left = -230; sun.shadow.camera.right = 230; sun.shadow.camera.top = 230; sun.shadow.camera.bottom = -230;
+  sun.shadow.bias = -0.0006; sun.shadow.normalBias = .6;
+  s.add(sun); s.add(sun.target);
+  sunLight = sun;
   return s;
 }
 async function fetchLatestPush() {
@@ -56,6 +66,16 @@ function resetPlayer(spawn) {
   player.position.set(spawn.x, spawn.y || 0, spawn.z); player.yaw = spawn.yaw || 0;
   player.vy = 0; player.grounded = true; player.health = 100; player.wallet = 500; player.goods = 0;
   player.tools = 3; player.ammo = 72; player.weapon = 0; player.wanted = 0; player.escape = 0; player.arrest = 0;
+}
+function teleportTo(x, z) {
+  if (!world) return;
+  const p = new THREE.Vector3(x, 0, z);
+  const y = groundAt(p);
+  driven = null; ridden = null; taxi = null; avatar.visible = true; resetDrive();
+  player.position.set(x, y, z); player.vy = 0; player.grounded = true;
+  avatar.position.copy(player.position);
+  closePhone();
+  toast('已传送至 ' + Math.round(x) + ', ' + Math.round(z));
 }
 function loadMap(id) {
   mapId = id;
@@ -96,6 +116,20 @@ let stickSprint = false;
 // On-screen touch driving pad: steering + throttle/brake + drive/reverse gear.
 const drive = { left: false, right: false, throttle: false, brake: false, up: false, down: false, gear: 1 };
 function resetDrive() { drive.left = drive.right = drive.throttle = drive.brake = drive.up = drive.down = false; }
+// Per-type driving feel: accel, brake, top speed, reverse cap, turn rate, drag.
+const HANDLING = {
+  bike: { accel: 9, max: 20, rev: -4, turn: 1.7, drag: .7 },
+  ev: { accel: 10, max: 24, rev: -4, turn: 1.6, drag: .7 },
+  sedan: { accel: 11, max: 40, rev: -8, turn: 1.0, drag: .5 },
+  taxi: { accel: 11, max: 42, rev: -8, turn: 1.0, drag: .5 },
+  sport: { accel: 22, max: 68, rev: -9, turn: 1.15, drag: .4 },
+  jeep: { accel: 13, max: 38, rev: -9, turn: 1.0, drag: .5 },
+  van: { accel: 9, max: 34, rev: -7, turn: .85, drag: .5 },
+  pickup: { accel: 11, max: 40, rev: -8, turn: .95, drag: .5 },
+  police: { accel: 18, max: 58, rev: -8, turn: 1.1, drag: .42 },
+  bus: { accel: 6, max: 22, rev: -5, turn: .6, drag: .6 },
+};
+let firstPerson = false, lookYaw = 0, lookPitch = 0;
 // Phone tilt steering while driving. The sign is normalised so leaning the
 // phone to the right steers right; calibrate any time to reset the level.
 let sensorSteer = 0, sensorBase = null, sensorOn = false, sensorBound = false, lastTilt = 0;
@@ -168,8 +202,8 @@ addPage('places', '地点', '◇', '<div class="phone-section-label">城市地�
 addPage('transit', '公交', '▤', '<div class="phone-section-label">01 · 金陵公交</div><div id="bus-list" class="destination-list"></div><button id="bus-apply" class="primary-button">应聘临时驾驶员</button><p id="bus-state" class="phone-hint"></p>');
 addPage('taxi', '打车', '↗', '<div class="phone-section-label">COAST CAB</div><p class="phone-hint">在地图上选择目的地，出租车会沿道路来接你。到车旁按 E 上车乘坐，车费预付。</p><button id="taxi-pick" class="phone-secondary">打开地图选目的地</button><div id="taxi-info" class="order-card"></div><button id="taxi-call" class="primary-button">呼叫出租车</button><button id="taxi-cancel" class="phone-secondary">取消叫车</button>');
 addPage('delivery', '跑腿', '⇢', '<div class="phone-section-label">金陵跑腿</div><p class="phone-hint">接单后去德基广场 3F 美食档取餐，再按导航送到居民楼指定楼层。多层楼要走楼梯，送达后现金结算。</p><div id="delivery-info" class="order-card"></div><button id="delivery-accept" class="primary-button">接一单配送</button><button id="delivery-cancel" class="phone-secondary">放弃当前配送</button>');
-addPage('cheats', '沙盒工具', '✦', '<div class="phone-section-label">沙盒工具</div><div id="cheat-summary" class="wallet-card"></div><button data-cheat="cash" class="phone-secondary">获取 $10,000</button><button data-cheat="resources" class="phone-secondary">获取物资与撬锁工具</button><button data-cheat="weapons" class="phone-secondary">全部武器与 999 发弹药</button><button data-cheat="heal" class="phone-secondary">恢复生命</button><button data-cheat="wanted" class="phone-secondary">清除通缉</button><button data-cheat="car" class="phone-secondary">附近生成共享跑车</button>');
-document.querySelector('[data-page="help"]').innerHTML = '<div class="phone-section-label">自由行动</div><div class="help-grid"><kbd>WASD / 方向键</kbd><span>步行 / 驾驶</span><kbd>E</kbd><span>交互 / 驾驶 / 乘坐 / 下车</span><kbd>F 按住</kbd><span>撬锁（手机点交互按钮）</span><kbd>Shift / Space</kbd><span>奔跑加速 / 跳跃手刹</span><kbd>1 / 2 / 3</kbd><span>徒手 / 手枪 / 冲锋枪</span><kbd>右键移动 / 左键</kbd><span>瞄准 / 射击</span><kbd>P / M / Esc</kbd><span>手机 / 地图 / 返回游戏</span></div><p class="phone-hint">手机横屏：左侧摇杆移动，推到最上方会锁定奔跑；右侧只有交互键和跳跃键，点按画面开火。驾驶时左下是左右转向键，右下是油门 / 刹车键与 D/R 挡位；也可左右倾斜手机转向（设置页可校准），或把摇杆横向当方向盘。直升机 / 飞机用 Space 上升、Shift 下降，触摸时左下出现升 / 降键，停稳落地后才能下机。建筑、地铁入口都可直接走入，没有过场。多层居民楼和德基广场可以走楼梯上楼，跑腿单就在这里取餐送达。</p>';
+addPage('cheats', '沙盒工具', '✦', '<div class="phone-section-label">沙盒工具</div><div id="cheat-summary" class="wallet-card"></div><button data-cheat="cash" class="phone-secondary">获取 $10,000</button><button data-cheat="resources" class="phone-secondary">获取物资与撬锁工具</button><button data-cheat="weapons" class="phone-secondary">全部武器与 999 发弹药</button><button data-cheat="heal" class="phone-secondary">恢复生命</button><button data-cheat="wanted" class="phone-secondary">清除通缉</button><div class="phone-section-label">在附近生成载具</div><div id="spawn-vehicles" class="spawn-grid"></div>');
+document.querySelector('[data-page="help"]').innerHTML = '<div class="phone-section-label">自由行动</div><div class="help-grid"><kbd>WASD / 方向键</kbd><span>步行 / 驾驶</span><kbd>E</kbd><span>交互 / 驾驶 / 乘坐 / 下车</span><kbd>F 按住</kbd><span>撬锁（手机点交互按钮）</span><kbd>Shift / Space</kbd><span>奔跑加速 / 跳跃手刹</span><kbd>1 / 2 / 3</kbd><span>徒手 / 手枪 / 冲锋枪</span><kbd>右键移动 / 左键</kbd><span>瞄准 / 射击</span><kbd>P / M / Esc</kbd><span>手机 / 地图 / 返回游戏</span><kbd>V</kbd><span>载具第一 / 第三人称</span><kbd>右键拖动</kbd><span>第一人称环视</span></div><p class="phone-hint">手机横屏：左侧摇杆移动，推到最上方会锁定奔跑；右侧只有交互键和跳跃键，点按画面开火。驾驶时左下是左右转向键，右下是油门 / 刹车键与 D/R 挡位；也可左右倾斜手机转向（设置页可校准），或把摇杆横向当方向盘。直升机 / 飞机用 Space 上升、Shift 下降，触摸时左下出现升 / 降键，停稳落地后才能下机。建筑、地铁入口都可直接走入，没有过场。多层居民楼和德基广场可以走楼梯上楼，跑腿单就在这里取餐送达。</p>';
 document.querySelector('[data-page="missions"]').innerHTML = '<div class="phone-section-label">街头生活</div><p class="phone-hint">这一版以连续城市和交通为主：可以乘公交、坐地铁、叫出租车，也能骑自行车、驾驶直升机或飞机；路上有真实车流与行人，撞到人会触发通缉。跑腿页可以接配送单：德基广场 3F 取餐，再爬楼送到居民楼。</p>';
 document.querySelector('#phone-reset').textContent = '↺ 回到新街口';
 const titles = { home: 'JINLING OS', map: '城市地图', places: '城市地点', transit: '公交 01', taxi: 'COAST CAB', delivery: '金陵跑腿', cheats: '沙盒工具', help: '操作指南', missions: '街头生活', settings: '设置' };
@@ -211,6 +245,7 @@ function refreshPhone() {
   list('bus-list', transport.busStops, p => { destination = { ...p }; showPage('map'); });
   $('navigation-label').textContent = destination ? `${destination.name} · ${Math.round(destination.x)}, ${Math.round(destination.z)}` : '点击地图选择任意目的地';
   $('clear-navigation').hidden = !destination;
+  if ($('map-teleport')) $('map-teleport').hidden = !destination;
   $('bus-state').textContent = busJob ? `当前下一站：${transport.busStops[busJob.next].name} · 停稳开门 8 秒，每站 $60，完成 +$300` : '到鼓楼公交场领取共享公交，也可以乘坐运行中的公交。';
   $('bus-apply').textContent = busJob ? '取消当前班次' : '应聘临时驾驶员';
   const fare = estimateFare();
@@ -313,7 +348,7 @@ function interact() {
     }
     player.position.copy(pos);
     if (taxi && taxi.vehicle === v) { taxi.state = 'done'; taxi = null; }
-    resetDrive(); driven = null; ridden = null; avatar.visible = true; distance = 12; return;
+    resetDrive(); driven = null; ridden = null; avatar.visible = true; distance = 12; lookYaw = 0; lookPitch = 0; return;
   }
   const near = nearby(); if (!near) return;
   if (near.kind === 'train') { ridden = near.item; avatar.visible = false; toast('已登车 · 到站开门后按 E 下车'); return; }
@@ -326,8 +361,8 @@ function interact() {
     }
     if (v.type === 'bus' && v.ai) { ridden = v; avatar.visible = false; toast('已乘公交 · 到站停车后按 E 下车'); return; }
     driven = v; v.ai = false; avatar.visible = false; distance = v.type === 'bus' ? 22 : 15;
-    resetDrive(); setGear(1); sensorBase = null;
-    if (v.flying) toast(v.type === 'plane' ? '飞机 · W/S 油门，A/D 转向，Space 拉升，Shift 下降' : '直升机 · W/S 前后，A/D 转向，Space 上升，Shift 下降');
+    resetDrive(); setGear(1); sensorBase = null; lookYaw = 0; lookPitch = 0;
+    if (v.flying) toast(v.type === 'plane' ? '飞机 · W/S 油门加速，A/D 转向，Space 拉起 / Shift 俯冲（需空速才能离地）' : '直升机 · W/S 前后，A/D 转向，Space 上升 / Shift 下降（可悬停）');
     if (!v.shared && !v.stolen) { v.stolen = true; crime('车辆失窃'); }
     return;
   }
@@ -445,13 +480,32 @@ function updatePlayer(dt) {
     const forward = THREE.MathUtils.clamp(keyForward + (analog ? -stick.y : 0) + pedal * (v.flying ? 1 : drive.gear), -1, 1);
     const steer = THREE.MathUtils.clamp(keySteer + buttonSteer + (isTouch ? sensorSteer + (analog ? -stick.x : 0) : 0), -1, 1);
     if (v.flying) {
-      v.speed += forward * (v.type === 'plane' ? 17 : 13) * dt;
-      if (!forward) v.speed *= Math.exp(-dt * (v.type === 'plane' ? .22 : .55));
-      v.speed = THREE.MathUtils.clamp(v.speed, v.type === 'plane' ? 0 : -8, v.type === 'plane' ? 78 : 36);
       const climb = THREE.MathUtils.clamp((keys.has('Space') ? 1 : 0) - (keys.has('ShiftLeft') || keys.has('ShiftRight') || (isTouch && stick.mag > .55 && stick.y > .55) ? 1 : 0) + (drive.up ? 1 : 0) - (drive.down ? 1 : 0), -1, 1);
-      v.alt = THREE.MathUtils.clamp(v.alt + climb * 8 * dt, 1.2, 240);
-      // Helicopters can yaw in place with the tail rotor; planes only turn with airspeed.
-      v.yaw += steer * (v.type === 'plane' ? Math.min(Math.abs(v.speed) / 14, 1) * .6 : 1.25 + Math.min(Math.abs(v.speed) / 60, .35)) * dt;
+      if (v.type === 'plane') {
+        // Fixed wing: throttle + pitch only. It climbs solely with airspeed,
+        // cannot hover, cannot reverse; A/D bank it into a turn.
+        if (forward) v.speed += forward * 26 * dt; else v.speed *= Math.exp(-dt * .16);
+        v.speed = THREE.MathUtils.clamp(v.speed, 0, 96);
+        const lift = Math.min(v.speed / 24, 1);
+        v.alt += climb * lift * 16 * dt;
+        if (v.alt > 1.7 && lift < .3) v.alt -= (1 - lift) * 4 * dt;
+        v.alt = THREE.MathUtils.clamp(v.alt, 1.2, 300);
+        v.yaw += steer * Math.min(v.speed / 26, 1) * .8 * dt;
+        const pitchTarget = -climb * .12, rollTarget = -steer * Math.min(v.speed / 40, 1) * .32, ease = Math.min(1, dt * 4);
+        v.group.rotation.x += (pitchTarget - v.group.rotation.x) * ease;
+        v.group.rotation.z += (rollTarget - v.group.rotation.z) * ease;
+      } else {
+        // Helicopter: cyclic + collective. The tail rotor lets it yaw in place,
+        // so it can hover and back up.
+        v.speed += forward * 13 * dt;
+        if (!forward) v.speed *= Math.exp(-dt * .55);
+        v.speed = THREE.MathUtils.clamp(v.speed, -8, 36);
+        v.alt = THREE.MathUtils.clamp(v.alt + climb * 8 * dt, 1.2, 240);
+        v.yaw += steer * (1.25 + Math.min(Math.abs(v.speed) / 60, .35)) * dt;
+        const pitchTarget = -climb * .06, rollTarget = -steer * .1, ease = Math.min(1, dt * 4);
+        v.group.rotation.x += (pitchTarget - v.group.rotation.x) * ease;
+        v.group.rotation.z += (rollTarget - v.group.rotation.z) * ease;
+      }
       v.group.rotation.y = v.yaw + Math.PI; v.group.position.y = v.alt;
       if (move(v.group.position, -Math.sin(v.yaw) * v.speed * dt, -Math.cos(v.yaw) * v.speed * dt, v.w * .7)) v.speed *= -.1;
       if (v.rotor) v.rotor.rotation.y += dt * 26;
@@ -460,13 +514,17 @@ function updatePlayer(dt) {
       travel += Math.abs(v.speed) * dt;
       player.position.copy(v.group.position);
     } else {
-      v.speed += forward * (forward * v.speed < 0 ? 25 : 12) * dt;
-      if (!forward) v.speed *= Math.exp(-dt * .5);
+      const H = HANDLING[v.type] || HANDLING.sedan;
+      const twoWheel = v.type === 'bike' || v.type === 'ev';
+      const boost = (keys.has('ShiftLeft') || keys.has('ShiftRight')) && !twoWheel && v.type !== 'bus';
+      const maxSpeed = H.max * (boost ? 1.5 : 1);
+      v.speed += forward * (forward * v.speed < 0 ? H.accel * 2.4 : H.accel * (boost ? 1.4 : 1)) * dt;
+      if (!forward) v.speed *= Math.exp(-dt * (H.drag + .35));
       if (keys.has('Space')) v.speed *= Math.exp(-dt * 3);
-      const maxSpeed = v.type === 'bus' ? 23 : v.type === 'bike' ? 22 : keys.has('ShiftLeft') || keys.has('ShiftRight') ? 65 : 43;
-      v.speed = THREE.MathUtils.clamp(v.speed, -9, maxSpeed);
-      v.yaw += steer * Math.min(Math.abs(v.speed) / 6, 1) * Math.sign(v.speed) * (v.type === 'bus' ? .6 : 1.05) * dt;
+      v.speed = THREE.MathUtils.clamp(v.speed, H.rev, maxSpeed);
+      v.yaw += steer * Math.min(Math.abs(v.speed) / 5, 1) * Math.sign(v.speed) * H.turn * dt;
       v.group.rotation.y = v.yaw;
+      v.group.rotation.z = twoWheel ? -steer * Math.min(Math.abs(v.speed) / 25, 1) * .35 : 0;
       const before = v.group.position.clone();
       if (move(v.group.position, -Math.sin(v.yaw) * v.speed * dt, -Math.cos(v.yaw) * v.speed * dt, v.w * .55)) v.speed *= -.15;
       travel += before.distanceTo(v.group.position);
@@ -490,7 +548,7 @@ function updatePlayer(dt) {
   } else {
     const ix = Number(keys.has('KeyD') || keys.has('ArrowRight')) - Number(keys.has('KeyA') || keys.has('ArrowLeft')) + (stick.mag > .18 ? stick.x : 0);
     const iz = Number(keys.has('KeyS') || keys.has('ArrowDown')) - Number(keys.has('KeyW') || keys.has('ArrowUp')) + (stick.mag > .18 ? stick.y : 0);
-    const dir = new THREE.Vector3(ix, 0, iz);
+    const dir = new THREE.Vector3(ix, 0, iz); let stepSpeed = 0;
     if (dir.lengthSq() > .01) {
       const analog = Math.min(1, dir.length());
       dir.normalize().applyAxisAngle(THREE.Object3D.DEFAULT_UP, yaw);
@@ -498,13 +556,14 @@ function updatePlayer(dt) {
       const px = player.position.x, pz = player.position.z;
       move(player.position, dir.x * speed * dt, dir.z * speed * dt);
       if (!transport.vehicleAt({ x: px, z: pz }, .55) && transport.vehicleAt(player.position, .55)) { player.position.x = px; player.position.z = pz; }
-      travel += speed * dt; player.yaw = Math.atan2(-dir.x, -dir.z);
+      travel += speed * dt; player.yaw = Math.atan2(-dir.x, -dir.z); stepSpeed = speed;
     }
     if (keys.has('Space') && player.grounded) { player.vy = 7; player.grounded = false; }
     const ground = groundAt(player.position);
     player.vy -= 20 * dt; player.position.y += player.vy * dt;
     if (player.position.y <= ground + .15 && player.vy <= 0) { player.position.y = ground; player.vy = 0; player.grounded = true; }
     avatar.position.copy(player.position); avatar.rotation.y = player.yaw;
+    animatePerson(avatar, elapsed, stepSpeed);
   }
   const lift = world.lift;
   if (lift.moving) {
@@ -583,6 +642,18 @@ function updateBusJob(dt) {
   } else { lastBusStop = -1; busDwell = 0; driven.doors = 0; driven.door.visible = true; }
 }
 function updateCamera(dt) {
+  if (driven && firstPerson) {
+    const v = driven;
+    const fwd = new THREE.Vector3(-Math.sin(v.yaw), 0, -Math.cos(v.yaw));
+    const seatY = v.type === 'bus' ? 2.9 : v.type === 'heli' ? 1.5 : v.type === 'plane' ? 1.55 : v.type === 'jeep' ? 1.7 : v.type === 'bike' || v.type === 'ev' ? 1.4 : 1.25;
+    const seatZ = v.type === 'plane' ? 1.1 : v.type === 'heli' ? .7 : v.type === 'bus' ? 3.4 : .2;
+    const camPos = v.group.position.clone().add(new THREE.Vector3(0, seatY, 0)).addScaledVector(fwd, seatZ);
+    const heading = v.yaw + lookYaw;
+    const dir = new THREE.Vector3(-Math.sin(heading) * Math.cos(lookPitch), Math.sin(lookPitch), -Math.cos(heading) * Math.cos(lookPitch));
+    camera.position.lerp(camPos, 1 - Math.exp(-dt * 16));
+    camera.lookAt(camPos.clone().add(dir));
+    return;
+  }
   const target = player.position.clone().add(new THREE.Vector3(0, ridden && ridden.type === 'metro' ? 2 : 1.4, 0));
   const indoors = world.places.some(p => p.interior && Math.hypot(p.x - player.position.x, p.z - player.position.z) < 70) && !driven && !ridden;
   const camDistance = ridden && ridden.type === 'metro' ? 6 : driven && driven.type === 'plane' ? 24 : driven && driven.type === 'heli' ? 18 : indoors ? 5.5 : distance;
@@ -600,7 +671,7 @@ function updateHUD() {
   else if (nearest && nearest.kind === 'train') text = `E · 登上 ${nearest.item.line.name} 地铁`;
   else if (nearest && nearest.kind === 'vehicle') {
     const v = nearest.item;
-    text = 'E · ' + (taxi && v === taxi.vehicle ? '乘坐出租车' : v.type === 'bus' && v.ai ? '乘坐公交' : v.type === 'heli' ? '驾驶直升机' : v.type === 'plane' ? '驾驶飞机' : v.type === 'bike' ? '骑自行车' : v.type === 'jeep' ? '驾驶吉普' : v.type === 'ev' ? '驾驶电动车' : v.type === 'police' ? '驾驶警车' : v.shared ? '驾驶共享车辆' : '偷开车辆');
+    text = 'E · ' + (taxi && v === taxi.vehicle ? '乘坐出租车' : v.type === 'bus' && v.ai ? '乘坐公交' : v.type === 'heli' ? '驾驶直升机' : v.type === 'plane' ? '驾驶飞机' : v.type === 'bike' ? '骑自行车' : v.type === 'jeep' ? '驾驶吉普' : v.type === 'ev' ? '骑电动自行车' : v.type === 'police' ? '驾驶警车' : v.shared ? '驾驶共享车辆' : '偷开车辆');
   } else if (nearest) text = `${nearest.item.locked ? 'F 按住' : 'E'} · ${nearest.item.name}`;
   const door = nearest && nearest.kind === 'action' && nearest.item.locked;
   if (!(door && (keys.has('KeyF') || touchPrying))) actionHUD.textContent = text;
@@ -612,7 +683,7 @@ function updateHUD() {
   gameEl.classList.toggle('drive-mode', !!driven);
   gameEl.classList.toggle('fly-mode', !!(driven && driven.flying));
   $('speed').textContent = String(Math.round(Math.abs(vehicle ? vehicle.speed : 0) * 3.6)).padStart(2, '0');
-  $('mode-name').textContent = vehicle ? vehicle.type === 'metro' ? vehicle.line.name : vehicle.type === 'bus' ? '01 · 金陵公交' : vehicle.type === 'taxi' ? 'COAST CAB' : vehicle.type === 'bike' ? '共享单车' : vehicle.type === 'heli' ? '直升机' : vehicle.type === 'plane' ? '固定翼飞机' : vehicle.type === 'jeep' ? '越野吉普' : vehicle.type === 'ev' ? '电动轿车' : vehicle.type === 'police' ? '警用车' : '自由驾驶' : '步行';
+  $('mode-name').textContent = vehicle ? vehicle.type === 'metro' ? vehicle.line.name : vehicle.type === 'bus' ? '01 · 金陵公交' : vehicle.type === 'taxi' ? 'COAST CAB' : vehicle.type === 'bike' ? '共享单车' : vehicle.type === 'heli' ? '直升机' : vehicle.type === 'plane' ? '固定翼飞机' : vehicle.type === 'jeep' ? '越野吉普' : vehicle.type === 'ev' ? '电动自行车' : vehicle.type === 'police' ? '警用车' : '自由驾驶' : '步行';
   $('gear').textContent = driven ? (driven.flying ? '飞' : drive.gear > 0 ? 'D' : 'R') : ridden ? '乘' : '—';
   $('speed-bar').style.width = Math.min(100, Math.abs(vehicle ? vehicle.speed : 0) / 60 * 100) + '%';
 
@@ -698,6 +769,7 @@ $('map-button').onclick = () => openPhone('map');
 $('hud-button').onclick = () => { gameEl.classList.toggle('hud-hidden'); hiddenHUD = !hiddenHUD; };
 $('phone-hud-button').onclick = () => $('hud-button').click();
 $('clear-navigation').onclick = $('cancel-navigation').onclick = () => { destination = null; refreshPhone(); };
+if ($('map-teleport')) $('map-teleport').onclick = () => { if (destination) teleportTo(destination.x, destination.z); };
 actionHUD.onclick = () => {
   const near = nearby();
   if (near && near.kind === 'action' && near.item.type === 'door' && near.item.locked) { touchPrying = true; return; }
@@ -741,11 +813,22 @@ document.querySelectorAll('[data-cheat]').forEach(b => {
       case 'weapons': player.weapon = 2; player.ammo = 999; break;
       case 'heal': player.health = 100; break;
       case 'wanted': player.wanted = 0; police.forEach(v => { v.group.visible = false; }); break;
-      case 'car': transport.create('sport', player.position.x + 4, player.position.z, '#cbe2a3', { shared: true }); break;
     }
     refreshPhone(); toast('沙盒资源已更新');
   };
 });
+const SPAWN_TYPES = [['sedan', '轿车'], ['sport', '跑车'], ['jeep', '越野吉普'], ['ev', '电动自行车'], ['bike', '自行车'], ['van', '面包车'], ['pickup', '皮卡'], ['police', '警车'], ['taxi', '出租车'], ['bus', '公交'], ['heli', '直升机'], ['plane', '固定翼飞机']];
+function spawnVehicle(type) {
+  const fwd = { x: -Math.sin(player.yaw), z: -Math.cos(player.yaw) };
+  const x = player.position.x + fwd.x * 9 + 5, z = player.position.z + fwd.z * 9 + 3;
+  const flying = type === 'heli' || type === 'plane';
+  const v = transport.create(type, x, z, ['#d7e69c', '#cbe2a3', '#bcd9d0', '#dce1d6'][Math.floor(Math.random() * 4)], flying ? { flying: true } : { shared: true });
+  if (flying) v.group.position.y = v.alt = 3;
+  const label = SPAWN_TYPES.find(t => t[0] === type);
+  toast('已生成 · ' + (label ? label[1] : type));
+}
+const spawnGrid = $('spawn-vehicles');
+if (spawnGrid) for (const [type, name] of SPAWN_TYPES) { const b = document.createElement('button'); b.className = 'phone-secondary'; b.textContent = '生成 · ' + name; b.onclick = () => spawnVehicle(type); spawnGrid.append(b); }
 
 let mapDrag = null, mapMoved = false, tapStart = null;
 $('phone-map').addEventListener('pointerdown', e => { mapDrag = { x: e.clientX, y: e.clientY }; mapMoved = false; $('phone-map').setPointerCapture(e.pointerId); });
@@ -784,6 +867,7 @@ addEventListener('keydown', e => {
   }
   if (e.code === 'KeyP' && !e.repeat) { phoneOpen ? closePhone() : openPhone(); return; }
   if (e.code === 'KeyM' && !e.repeat) { phoneOpen && phonePage === 'map' ? closePhone() : openPhone('map'); return; }
+  if (e.code === 'KeyV' && !e.repeat) { firstPerson = !firstPerson; lookYaw = 0; lookPitch = 0; toast(driven ? (firstPerson ? '载具第一人称' : '载具第三人称') : firstPerson ? '第一人称（需驾驶载具）' : '第三人称'); return; }
   if (phoneOpen || !liftPanel.hidden) return;
   keys.add(e.code);
   if (e.repeat) return;
@@ -804,6 +888,12 @@ canvas.addEventListener('pointerdown', e => {
   drag = { x: e.clientX, y: e.clientY }; tapStart = { x: e.clientX, y: e.clientY }; canvas.setPointerCapture(e.pointerId);
 });
 canvas.addEventListener('pointermove', e => {
+  if (firstPerson && driven) {
+    const dx = drag ? e.clientX - drag.x : e.movementX, dy = drag ? e.clientY - drag.y : e.movementY;
+    lookYaw -= dx * .004; lookPitch = THREE.MathUtils.clamp(lookPitch - dy * .003, -.6, .6);
+    if (drag) drag = { x: e.clientX, y: e.clientY };
+    return;
+  }
   if (aim) { yaw -= e.movementX * .004; pitch = THREE.MathUtils.clamp(pitch + e.movementY * .003, -.2, 1); }
   else if (drag) {
     yaw -= (e.clientX - drag.x) * .005;
@@ -862,6 +952,7 @@ bindHold($('drive-fly-down'), () => drive.down = true, () => drive.down = false)
 if ($('drive-gear')) $('drive-gear').onclick = () => setGear(drive.gear > 0 ? -1 : 1);
 if ($('drive-exit')) $('drive-exit').onclick = interact;
 if ($('drive-calibrate')) $('drive-calibrate').onclick = () => calibrateSensor();
+if ($('drive-view')) $('drive-view').onclick = () => { firstPerson = !firstPerson; lookYaw = 0; lookPitch = 0; toast(firstPerson ? '载具第一人称' : '载具第三人称'); };
 if ($('phone-calibrate')) $('phone-calibrate').onclick = () => calibrateSensor();
 
 function resize() { renderer.setSize(innerWidth, innerHeight); camera.aspect = innerWidth / innerHeight; camera.updateProjectionMatrix(); }
@@ -870,6 +961,7 @@ function frame() {
   requestAnimationFrame(frame);
   const dt = Math.min(clock.getDelta(), .05);
   if (!world) return;
+  if (sunLight) { sunLight.position.set(player.position.x - 190, 320, player.position.z + 150); sunLight.target.position.set(player.position.x, 0, player.position.z); sunLight.target.updateMatrixWorld(); }
   if (!phoneOpen && liftPanel.hidden) {
     elapsed += dt;
     transport.update(dt, player.position, driven, ridden);

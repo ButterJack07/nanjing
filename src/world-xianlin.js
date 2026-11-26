@@ -1,8 +1,9 @@
 import * as THREE from 'three';
-import { mergeGeometries } from 'three/examples/jsm/utils/BufferGeometryUtils.js';
 import { buildRoads } from './road-network.js';
 import { ROADS, BOUNDARY } from './xianlin-roads.js';
-import { FOOTPRINTS, GREENS, WATERS } from './xianlin-footprints.js';
+import { FOOTPRINTS, GREENS, WATERS, RIVERS } from './xianlin-footprints.js';
+import { buildTerrain } from './xianlin-terrain.js';
+import { buildBuildings } from './xianlin-buildings.js';
 
 // Nanjing University Xianlin Campus (南京大学仙林校区), rebuilt from real
 // OpenStreetMap data: road centrelines, building footprint polygons, green
@@ -36,7 +37,6 @@ export const xianlinSpawn = { x: 455, z: 1000, yaw: Math.PI };
 // Enterable buildings drawn as walk-in shells (real centre coords); their OSM
 // footprints are skipped so they don't clash.
 const ENTERABLE = [
-  { name: '杜厦图书馆 · 借阅大厅', x: 386, z: 376, w: 76, d: 54, kind: 'library' },
   { name: '敬文学生活动中心', x: 150, z: 420, w: 60, d: 46, kind: 'activity' },
   { name: '校史馆（沈小平楼）', x: 214, z: 333, w: 42, d: 32, kind: 'museum' },
   { name: '游泳馆', x: 222, z: 148, w: 52, d: 40, kind: 'pool' },
@@ -65,7 +65,7 @@ export function createXianlinWorld(scene) {
   const cube = new THREE.BoxGeometry(1, 1, 1);
   function box(w, h, d, color, x, y, z, parent = scene, extra = {}) {
     const mesh = new THREE.Mesh(cube, material(color, extra));
-    mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.receiveShadow = true; parent.add(mesh); return mesh;
+    mesh.scale.set(w, h, d); mesh.position.set(x, y, z); mesh.receiveShadow = true; mesh.castShadow = true; parent.add(mesh); return mesh;
   }
   function solid(w, h, d, color, x, y, z, parent = scene) {
     const mesh = box(w, h, d, color, x, y, z, parent);
@@ -100,20 +100,27 @@ export function createXianlinWorld(scene) {
   function point(x, z) { const n = { x, z, links: [], id: nodes.length }; nodes.push(n); return n; }
   function road(a, b, width = 14, sidewalk = true, name = '校园道路', kind = 'road') {
     a.links.push(b.id); b.links.push(a.id);
-    const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz), angle = Math.atan2(dx, dz), x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
-    const isLocal = width < 12;
-    if (sidewalk) {
-      const extra = isLocal ? 1 : width >= 30 ? 12 : 6;
-      const walk = box(width + extra, .18, length + width, isLocal ? '#aeac9c' : '#c3c1b0', x, -.05, z); walk.rotation.y = angle;
-    }
-    const mesh = box(width, .13, length + width, isLocal ? '#5b5f59' : '#48565b', x, .08, z); mesh.rotation.y = angle;
-    for (let t = 12; width >= 14 && t < length - 10; t += 18) {
-      const line = box(.16, .025, 6, '#eadab0', a.x + dx * t / length, .16, a.z + dz * t / length); line.rotation.y = angle;
-    }
-    if (width >= 30) for (const side of [-1, 1]) {
-      const lane = box(.11, .025, length, '#bcc4bc', x + Math.cos(angle) * width / 4 * side, .16, z - Math.sin(angle) * width / 4 * side); lane.rotation.y = angle;
-    }
+    const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz), angle = Math.atan2(dx, dz);
     roads.push({ a, b, width, angle, length, name, kind });
+  }
+  // Continuous flat ribbon following a polyline centreline — smooth, no burrs.
+  function ribbon(points, width, color, y, extra = {}) {
+    if (points.length < 2) return null;
+    const verts = [], idx = [];
+    for (let i = 0; i < points.length; i++) {
+      const p = points[i], p0 = points[Math.max(0, i - 1)], p1 = points[Math.min(points.length - 1, i + 1)];
+      let dx = p1[0] - p0[0], dz = p1[1] - p0[1];
+      const len = Math.hypot(dx, dz) || 1; dx /= len; dz /= len;
+      const nx = -dz, nz = dx, half = width / 2;
+      verts.push(p[0] + nx * half, y, p[1] + nz * half);
+      verts.push(p[0] - nx * half, y, p[1] - nz * half);
+    }
+    for (let i = 0; i < points.length - 1; i++) { const a = i * 2; idx.push(a, a + 2, a + 1, a + 1, a + 2, a + 3); }
+    const g = new THREE.BufferGeometry();
+    g.setAttribute('position', new THREE.Float32BufferAttribute(verts, 3));
+    g.setIndex(idx); g.computeVertexNormals();
+    const m = new THREE.Mesh(g, material(color, { side: THREE.DoubleSide, ...extra }));
+    m.receiveShadow = true; scene.add(m); return m;
   }
   function floor(x, z, w, d, y = 0) { box(w, .22, d, '#b9b9a7', x, y - .13, z); floors.push({ x, z, hw: w / 2, hd: d / 2, y }); }
   function door(x, z, name, options = {}) {
@@ -185,80 +192,77 @@ export function createXianlinWorld(scene) {
   }
   function shapeOf(ring) { const s = new THREE.Shape(); ring.forEach(([x, z], i) => i ? s.lineTo(x, -z) : s.moveTo(x, -z)); s.closePath(); return s; }
 
-  // Real roads.
+  // Du Xia Library (杜厦图书馆) — detailed landmark built from its real OSM
+  // outline (outer ring + central courtyard). Walk-in with a south entrance.
+  function buildLibrary() {
+    const OUT = [[313,338],[318,366],[328,369],[330,379],[320,380],[328,434],[359,430],[367,428],[374,422],[379,414],[383,407],[393,405],[401,403],[409,410],[418,413],[428,416],[443,416],[459,414],[454,385],[452,372],[450,363],[443,318],[412,323],[406,334],[393,336],[394,325]];
+    const IN = [[401,345],[396,359],[394,372],[393,384],[396,395],[383,397],[379,387],[372,381],[362,378],[340,378],[339,371],[353,370],[367,368],[376,365],[382,361],[388,354],[391,346]];
+    const H = 19, WALL = '#cabfa8', GLASS = '#9fc4cc', ROOF = '#8f9694';
+    const cx = 386, cz = 376;
+    // Floor plate covering the whole footprint (ring + courtyard).
+    const fg = new THREE.ShapeGeometry(shapeOf(OUT)); fg.rotateX(Math.PI / 2);
+    const fm = new THREE.Mesh(fg, material('#c6c1ad', { side: THREE.DoubleSide })); fm.position.y = .05; fm.receiveShadow = true; scene.add(fm);
+    floors.push({ x: cx, z: cz, hw: 74, hd: 59, y: 0 });
+    // Wall along a segment, with an AABB collider.
+    const wallEdge = (a, b, color, t, h) => {
+      const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz), ang = Math.atan2(dx, dz);
+      const mx = (a[0] + b[0]) / 2, mz = (a[1] + b[1]) / 2;
+      const mesh = box(len, h, t, color, mx, h / 2, mz); mesh.rotation.y = ang;
+      const hw = (Math.abs(Math.cos(ang)) * len + Math.abs(Math.sin(ang)) * t) / 2;
+      const hd = (Math.abs(Math.sin(ang)) * len + Math.abs(Math.cos(ang)) * t) / 2;
+      solids.push({ x: mx, z: mz, hw, hd, low: 0, high: h, mesh });
+      return { dx, dz, len, ang };
+    };
+    const isEntrance = (a, b) => Math.hypot(a[0] - 328, a[1] - 434) < 3 && Math.hypot(b[0] - 359, b[1] - 430) < 3;
+    for (let i = 0; i < OUT.length; i++) { const a = OUT[i], b = OUT[(i + 1) % OUT.length]; if (isEntrance(a, b)) continue; wallEdge(a, b, WALL, .8, H); }
+    for (let i = 0; i < IN.length; i++) wallEdge(IN[i], IN[(i + 1) % IN.length], '#c3bca6', .7, H);
+    // Courtyard glass roof.
+    const gg = new THREE.ShapeGeometry(shapeOf(IN)); gg.rotateX(Math.PI / 2);
+    const gm = new THREE.Mesh(gg, new THREE.MeshStandardMaterial({ color: GLASS, transparent: true, opacity: .3, side: THREE.DoubleSide }));
+    gm.position.y = H - .15; scene.add(gm);
+    // Roof band (ring only) + parapet.
+    const rshape = shapeOf(OUT); const hole = new THREE.Path(); IN.forEach(([x, z], i) => i ? hole.lineTo(x, -z) : hole.moveTo(x, -z)); hole.closePath(); rshape.holes.push(hole);
+    const rg = new THREE.ShapeGeometry(rshape); rg.rotateX(Math.PI / 2);
+    const rm = new THREE.Mesh(rg, material(ROOF)); rm.position.y = H; rm.castShadow = true; rm.receiveShadow = true; scene.add(rm);
+    for (let i = 0; i < OUT.length; i++) { const a = OUT[i], b = OUT[(i + 1) % OUT.length]; const dx = b[0] - a[0], dz = b[1] - a[1], len = Math.hypot(dx, dz); const m = box(len, .8, .5, WALL, (a[0] + b[0]) / 2, H + .4, (a[1] + b[1]) / 2); m.rotation.y = Math.atan2(dx, dz); }
+    // South entrance: wide steps, a colonnade and a canopy.
+    const ex = 343.5;
+    for (let s = 0; s < 4; s++) box(34 - s * 2, .26, 1.3, '#cfc9b6', ex, .13 + s * .26, 441 + s * 1.35);
+    for (const ox of [-15, -7.5, 0, 7.5, 15]) box(.9, H + 1.5, .9, '#efe9d6', ex + ox, (H + 1.5) / 2, 440);
+    box(36, .5, 6, '#efe9d6', ex, H + 1.7, 441.5);
+    box(30, .06, 5, '#bcd0d4', ex, H + .35, 441.5, scene, { transparent: true, opacity: .35 });   // glass canopy under
+    label('杜厦图书馆 · DU XIA LIBRARY', ex, H + 4.2, 444, 50);
+    label('南京大学图书馆', 386, H + 3.4, 317, 30, scene, Math.PI);
+    // Interior: reading hall in the north band + a service counter.
+    for (let i = 0; i < 3; i++) for (let j = 0; j < 2; j++) { solid(4, .9, 8, '#8d775c', 352 + i * 11, .45, 342 + j * 13); box(3.8, .1, 7.6, '#d8d1b6', 352 + i * 11, .93, 342 + j * 13); }
+    for (let i = 0; i < 10; i++) box(3.2, 2.2, .6, '#8a7255', 336 + i * 2.4, 1.1, 358);
+    solid(14, 1.1, 2, '#8a6c4f', 386, .55, 356);
+    interactables.push({ type: 'info', name: '校史导览 · 后续任务', x: 386, z: 352, y: 0, message: '校史导览、校园跑腿与图书馆任务将在这里接入。' });
+    interactables.push({ type: 'info', name: '借阅馆藏', x: 420, z: 358, y: 0, message: '翻阅馆藏：南京大学史与仙林校区建筑档案。' });
+  }
+
+  // Real roads: graph for AI/routing + smooth ribbon surfaces.
   buildRoads(ROADS.map(([pts, width, name, kind]) => [name, width, pts, kind]), point, road);
+  for (const [pts, width, name, kind] of ROADS) {
+    if (kind === 'green') { ribbon(pts, Math.max(width, 4.5), '#9a9484', .028); continue; }
+    const isMain = width >= 30;
+    ribbon(pts, width + (isMain ? 16 : 8), isMain ? '#c3c1b0' : '#bcbaa9', .045);
+    ribbon(pts, width, '#48565b', .08);
+    if (width >= 20) ribbon(pts, 1.1, '#d9c98a', .095);
+  }
 
-  // Ground, campus lawn (real outline), Jiuxiang River.
-  box(3400, .12, 3600, '#8d9d79', 170, -.18, -30);
-  const lawn = new THREE.Mesh(new THREE.ShapeGeometry(shapeOf(BOUNDARY)), material('#6f8a5d', { side: THREE.DoubleSide }));
-  lawn.rotation.x = Math.PI / 2; lawn.position.y = .02; scene.add(lawn);
-  box(70, .12, 2200, '#5b8e92', -560, .03, -60, scene, { roughness: .3, metalness: .2 });
-  water.push({ x: -560, z: -60, w: 70, d: 2200 });
+  // Ground, lawns, green areas, water and riverbanks (real data).
+  const terrain = buildTerrain(scene, { material, box, bounds: xianlinBounds, GREENS, WATERS, RIVERS });
+  for (const tw of terrain.water) water.push(tw);
 
-  // Green areas and water (real polygons, flat).
-  const drawFlat = (ring, color, y) => {
-    const g = new THREE.ShapeGeometry(shapeOf(ring)); g.rotateX(Math.PI / 2);
-    const m = new THREE.Mesh(g, material(color, { side: THREE.DoubleSide }));
-    m.position.y = y; scene.add(m);
-  };
-  const GREEN = { sport: '#5f8f52', park: '#5a7d4b', green: '#628a4f' };
-  for (const [kind, ring] of GREENS) drawFlat(ring, GREEN[kind] || '#628a4f', .04);
-  for (const ring of WATERS) drawFlat(ring, '#6ea6a4', .05);
-
-  // Real building footprints, extruded and merged per colour.
+  // Real building footprints (walk-in buildings are skipped and built as shells).
   const skipCenters = [];
   for (const e of ENTERABLE) skipCenters.push([e.x, e.z]);
   for (const t of FOOD_TOWERS) skipCenters.push([t.x, t.z]);
   for (const t of DORM_TOWERS) skipCenters.push([t.x, t.z]);
-  const nearEnterable = (cx, cz) => skipCenters.some(([x, z]) => Math.abs(cx - x) < 30 && Math.abs(cz - z) < 30);
-  const PALETTE = ['#c7b8a5', '#cdb9ab', '#aebdb5', '#b7bdba', '#c1aa99', '#d3c8b0'];
-  const colorFor = tag => (/dorm/.test(tag) ? '#cdc3ab' : /apartment/.test(tag) ? '#c8bfa8' : /university|college|school|institute/.test(tag) ? '#c2bfae' : null);
-  // Window facades + roof material per building colour.
-  const facadeCache = new Map();
-  function facadeMat(color) {
-    if (facadeCache.has(color)) return facadeCache.get(color);
-    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
-    g.fillStyle = color; g.fillRect(0, 0, 64, 64);
-    g.fillStyle = 'rgba(38,58,70,.55)';
-    for (let gy = 7; gy < 64; gy += 20) for (let gx = 7; gx < 64; gx += 16) g.fillRect(gx, gy, 9, 12);
-    g.fillStyle = 'rgba(210,220,200,.18)'; for (let gy = 7; gy < 64; gy += 20) g.fillRect(0, gy + 12, 64, 2);
-    g.strokeStyle = 'rgba(255,255,255,.06)'; g.strokeRect(.5, .5, 63, 63);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 3.6, 1 / 3.6);
-    const m = new THREE.MeshStandardMaterial({ map: t, roughness: .9 }); facadeCache.set(color, m); return m;
-  }
-  const roofMat = (() => {
-    const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
-    g.fillStyle = '#9aa0a0'; g.fillRect(0, 0, 32, 32);
-    g.fillStyle = 'rgba(0,0,0,.09)'; for (let i = 0; i < 46; i++) g.fillRect((i * 7) % 32, (i * 13) % 32, 3, 2);
-    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 6, 1 / 6);
-    return new THREE.MeshStandardMaterial({ map: t, roughness: .95 });
-  })();
-  const groups = new Map();
-  let labeled = 0;
-  for (const [name, tag, h, ring] of FOOTPRINTS) {
-    let minX = Infinity, maxX = -Infinity, minZ = Infinity, maxZ = -Infinity;
-    for (const [x, z] of ring) { if (x < minX) minX = x; if (x > maxX) maxX = x; if (z < minZ) minZ = z; if (z > maxZ) maxZ = z; }
-    const cx = (minX + maxX) / 2, cz = (minZ + maxZ) / 2;
-    if (nearEnterable(cx, cz)) continue;
-    const geo = new THREE.ExtrudeGeometry(shapeOf(ring), { depth: h, bevelEnabled: false });
-    geo.rotateX(-Math.PI / 2);
-    const color = colorFor(tag) || PALETTE[(Math.abs((cx * 7 + cz * 13) | 0)) % PALETTE.length];
-    if (!groups.has(color)) groups.set(color, []);
-    groups.get(color).push(geo);
-    solids.push({ x: cx, z: cz, hw: (maxX - minX) / 2, hd: (maxZ - minZ) / 2, low: 0, high: h });
-    buildings.push({ x: cx, z: cz, w: maxX - minX, d: maxZ - minZ, h });
-    if (name && LABELED.test(name) && labeled < 46) { label(name, cx, h + 4, cz, Math.min((maxX - minX) * 1.1, 34)); labeled++; }
-  }
-  for (const [color, geos] of groups) {
-    const merged = mergeGeometries(geos, true);
-    geos.forEach(g => g.dispose());
-    const mesh = new THREE.Mesh(merged, [roofMat, facadeMat(color)]); mesh.receiveShadow = true; scene.add(mesh);
-  }
-  // Landmark: Left Dijiang Observatory dome (左涤江天文台).
-  const dome = new THREE.Mesh(new THREE.SphereGeometry(11, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), material('#cfd6d4', { metalness: .2 }));
-  dome.position.set(443, 22, -489); dome.receiveShadow = true; scene.add(dome);
-  const domeBase = new THREE.Mesh(new THREE.CylinderGeometry(11.4, 11.4, 1.2, 22), material('#b9bdb8'));
-  domeBase.position.set(443, 21.4, -489); scene.add(domeBase);
+  const nearEnterable = (cx, cz) => (cx > 300 && cx < 470 && cz > 305 && cz < 445) || skipCenters.some(([x, z]) => Math.abs(cx - x) < 30 && Math.abs(cz - z) < 30);
+  buildBuildings(scene, { material, solids, buildings, label, FOOTPRINTS, skip: nearEnterable });
+  buildLibrary();
 
   // Food towers and dorm towers (real coords, walk-in).
   for (const t of FOOD_TOWERS) tower({ ...t, levels: 2, h: 5, food: true });

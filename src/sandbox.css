@@ -105,4 +105,5 @@ html,body{overscroll-behavior:none;-webkit-user-select:none;user-select:none}
 .map-card-body p{margin:0 0 12px;font-size:11px;line-height:1.7;color:#c2cdc0}
 .map-card-body span{display:inline-block;font-size:11px;font-weight:700;color:#1d2c24;background:#dcf78d;border-radius:20px;padding:6px 14px}
 .map-select-foot{font-size:11px;color:#8fa394;margin:0}
+.spawn-grid{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin:6px 0 4px}
 @media (max-width:640px){.map-card{width:min(88vw,340px)}.map-select-head h1{font-size:26px}.map-card-art{height:104px}}

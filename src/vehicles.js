@@ -1,16 +1,15 @@
 import * as THREE from 'three';
 import { findRoute } from './world.js';
+import { createPerson, animatePerson } from './characters.js';
 
 export function createVehicles(world, scene) {
   const vehicles = [], passengers = [], peds = [];
   const busStops = (world.busStops || []).map(s => ({ ...s }));
   const { box, label, material } = world;
-  function person(color = '#b4c39c') {
-    const group = new THREE.Group(); box(.5, .8, .35, color, 0, 1.1, 0, group); box(.35, .4, .35, '#c69475', 0, 1.72, 0, group);
-    for (const side of [-1, 1]) box(.19, .7, .24, '#3f5661', side * .14, .4, 0, group); scene.add(group); return group;
-  }
+  function person(color = '#b4c39c', options) { return createPerson(scene, color, options); }
+  let walkT = 0;
   function create(type, x, z, color = '#c3d5a7', options = {}) {
-    const bike = type === 'bike', heli = type === 'heli', plane = type === 'plane', bus = type === 'bus', train = type === 'metro';
+    const bike = type === 'bike' || type === 'ev', ebike = type === 'ev', heli = type === 'heli', plane = type === 'plane', bus = type === 'bus', train = type === 'metro';
     const w = bike ? .8 : heli ? 3.4 : plane ? 2.6 : bus ? 2.9 : train ? 3 : 2.1;
     const d = bike ? 1.9 : heli ? 6.4 : plane ? 9.6 : bus ? 11 : train ? 24 : 4.6;
     const h = bike ? 1.1 : heli ? 2.1 : plane ? 1.9 : bus ? 3.2 : train ? 3.4 : type === 'jeep' ? 2.05 : type === 'ev' ? 1.5 : 1.6;
@@ -23,60 +22,120 @@ export function createVehicles(world, scene) {
       box(.15, .42, .15, '#3c4a4a', 0, .78, -.6, group);
       box(.1, .5, .1, '#6b8f92', 0, 1.32, 0, group);
       box(.7, .06, .12, '#5c6b68', 0, 1.55, 0, group);
+      box(.14, .14, .1, '#ffe9a8', 0, 1.0, -.78, group, { emissive: '#ffedb0', emissiveIntensity: .8 });
+      box(.12, .1, .1, '#ff4d3a', 0, .95, .78, group, { emissive: '#ff4d3a', emissiveIntensity: .6 });
       for (const zz of [-.7, .7]) { const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.4, .4, .1, 14), material('#263235')); wheel.rotation.z = Math.PI / 2; wheel.position.set(0, .4, zz); group.add(wheel); wheels.push(wheel); }
+      if (ebike) {
+        box(.34, .3, .62, '#2f3a3a', 0, .58, -.05, group);                       // battery pack
+        box(.2, .22, .22, '#39494b', 0, .62, .55, group);                          // motor/hub
+        box(.44, .34, .34, color, 0, .98, -.06, group);                            // seat pad
+        box(.3, .16, .2, color, 0, 1.18, -.62, group);                             // rear rack
+        box(.16, .16, .16, '#9fe0c4', 0, .58, .62, group, { emissive: '#63c6a4', emissiveIntensity: .5 }); // e-marker
+      }
     } else if (heli) {
-      box(w, .9, d * .7, color, 0, 1.1, 0, group);
-      box(w * .82, .8, 1.7, '#6f9aa0', 0, 1.5, d * .28, group, { transparent: true, opacity: .45 });
-      box(.5, .5, 3.2, color, 0, 1.2, -d * .62, group);
-      box(.22, 1.2, .9, color, 0, 1.9, -d * .85, group);
+      // Helicopter: rounded cabin, long tail boom with a tail rotor, big main
+      // rotor on a mast, and twin landing skids.
+      box(w * .82, .95, d * .5, color, 0, 1.15, .25, group);
+      box(w * .86, .8, 1.7, '#6f9aa0', 0, 1.5, d * .24, group, { transparent: true, opacity: .45 });
+      box(w * .5, .55, d * .3, color, 0, 1.3, -d * .35, group);
+      box(.42, .42, 3.2, color, 0, 1.25, -d * .66, group);
+      box(.22, 1.25, .9, color, 0, 1.95, -d * .9, group);
+      box(.9, .14, .8, color, .5, 1.5, -d * .88, group);
+      box(.16, .7, .16, '#39494b', 0, 2.15, 0, group);
       rotor = new THREE.Mesh(new THREE.CylinderGeometry(3.6, 3.6, .06, 20), material('#c8d6d2', { transparent: true, opacity: .35 }));
-      rotor.position.set(0, 2.5, 0); group.add(rotor);
-      box(.08, 1.7, .4, '#c8d6d2', .38, 1.95, -d * .88, group);
-      for (const s of [-1, 1]) { box(.16, .16, 3.2, '#39494b', s * 1.1, .25, 0, group); box(.16, .6, .16, '#39494b', s * 1.1, .52, .9, group); box(.16, .6, .16, '#39494b', s * 1.1, .52, -.9, group); }
+      rotor.position.set(0, 2.52, 0); group.add(rotor);
+      box(.08, 1.7, .4, '#c8d6d2', .4, 1.7, -d * .94, group);
+      for (const s of [-1, 1]) { box(.16, .16, 3.2, '#39494b', s * 1.1, .25, 0, group); box(.16, .6, .16, '#39494b', s * 1.1, .52, .9, group); box(.16, .6, .16, '#39494b', s * 1.1, .52, -.9, group); box(.16, .16, .5, '#39494b', s * 1.1, .55, 0, group); }
       door = box(w * .5, 1.2, .9, '#678b91', 0, 1.15, d * .28, group, { transparent: true, opacity: .4 });
+      box(.5, .36, .3, '#e2d48f', 0, .95, d * .5, group, { emissive: '#ffe9a8', emissiveIntensity: .7 });
     } else if (plane) {
-      box(w, 1.2, d * .7, color, 0, 1.1, 0, group);
-      box(w * .8, .8, 1.9, '#6f9aa0', 0, 1.42, d * .26, group, { transparent: true, opacity: .45 });
-      box(11, .16, 2.2, color, 0, 1.15, -.4, group);
-      box(4.6, .14, 1.1, color, 0, 1.1, d * .38, group);
-      box(.2, 1.8, 1.5, color, 0, 1.9, -d * .34, group);
-      box(w * .9, .45, .7, '#39494b', 0, .45, 0, group);
-      for (const s of [-1, 1]) { const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.36, .36, .16, 12), material('#263235')); wheel.rotation.z = Math.PI / 2; wheel.position.set(s * .72, .4, -.4); group.add(wheel); wheels.push(wheel); }
-      prop = new THREE.Mesh(new THREE.BoxGeometry(.08, 2.6, .3), material('#c8d6d2')); prop.position.set(0, 1.25, d * .53); group.add(prop);
-      door = box(1.1, 1.1, .1, '#678b91', w * .28, 1.35, d * .16, group, { transparent: true, opacity: .4 });
+      // Fixed wing: straight low wing, spinner + prop, tail fin, and tricycle
+      // landing gear — deliberately unlike the helicopter.
+      box(w * .9, 1.15, d * .62, color, 0, 1.15, 0, group);
+      box(w * .68, .9, d * .18, color, 0, 1.15, d * .4, group);
+      box(w * .78, .72, 1.9, '#6f9aa0', 0, 1.52, d * .24, group, { transparent: true, opacity: .45 });
+      box(w * .5, .5, d * .18, color, 0, 1.5, -d * .26, group);
+      box(11, .16, 2.2, color, 0, 1.05, -.3, group);
+      box(1.4, .34, 1.5, color, 0, .95, -.3, group);
+      box(4.2, .14, 1.1, color, 0, 1.3, -d * .4, group);
+      box(.18, 1.7, 1.3, color, 0, 2.0, -d * .4, group);
+      box(.5, .5, .5, color, 0, 2.7, -d * .42, group);
+      // Tricycle landing gear: two main wheels + a nose wheel, with struts.
+      for (const s of [-1, 1]) {
+        box(.13, .95, .13, '#39494b', s * 1.7, .82, -.3, group);
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(.42, .42, .3, 14), material('#263235'));
+        wheel.rotation.z = Math.PI / 2; wheel.position.set(s * 1.7, .44, -.3); group.add(wheel); wheels.push(wheel);
+      }
+      box(.13, .85, .13, '#39494b', 0, .8, d * .34, group);
+      { const nw = new THREE.Mesh(new THREE.CylinderGeometry(.34, .34, .26, 14), material('#263235')); nw.rotation.z = Math.PI / 2; nw.position.set(0, .36, d * .34); group.add(nw); wheels.push(nw); }
+      { const spin = new THREE.Mesh(new THREE.CylinderGeometry(.34, .34, .5, 12), material('#c8d6d2')); spin.rotation.x = Math.PI / 2; spin.position.set(0, 1.15, d * .5); group.add(spin); }
+      prop = new THREE.Mesh(new THREE.BoxGeometry(.1, 2.7, .28), material('#c8d6d2')); prop.position.set(0, 1.15, d * .56); group.add(prop);
+      box(.16, .16, .2, '#db787a', -5.4, 1.05, -.3, group, { emissive: '#ff4444', emissiveIntensity: .8 });
+      box(.16, .16, .2, '#7fa8db', 5.4, 1.05, -.3, group, { emissive: '#44ee88', emissiveIntensity: .8 });
+      door = box(1.1, 1, .1, '#678b91', w * .28, 1.4, d * .14, group, { transparent: true, opacity: .4 });
     } else {
-      // Open body and transparent windows let passengers remain visibly inside.
-      box(w, .6, d, color, 0, .8, 0, group); box(w, .18, d, color, 0, h + .1, 0, group);
-      for (const side of [-1, 1]) {
-        box(.12, .65, d, color, side * w / 2, 1.3, 0, group);
-        for (let zz = -d / 2 + .5; zz < d / 2; zz += bus || train ? 2 : 1.4) box(.12, h - 1.5, .12, color, side * w / 2, h / 2 + .7, zz, group);
-        box(.06, h - 1.6, d - .4, '#6b9ca2', side * w / 2, h / 2 + .75, 0, group, { transparent: true, opacity: .25, depthWrite: false });
-      }
-      box(w - .2, h - 1.4, .1, '#45717a', 0, h / 2 + .65, -d / 2, group, { transparent: true, opacity: .5 });
-      if (!train) for (const side of [-1, 1]) for (const zz of [-d * .32, d * .32]) {
-        const r = bus ? .6 : type === 'jeep' ? .56 : .43;
-        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(r, r, .24, 12), material('#263235'));
-        wheel.rotation.z = Math.PI / 2; wheel.position.set(side * w / 2, bus ? .5 : type === 'jeep' ? .58 : .5, zz); group.add(wheel); wheels.push(wheel);
-      }
-      if (type === 'van') box(w, .9, 2.7, color, 0, 1.6, .8, group);
-      if (type === 'pickup') box(w, .4, 1.7, color, 0, 1.4, 1.3, group);
-      if (type === 'jeep') {
-        box(w + .1, .5, d, color, 0, h + .35, 0, group);
-        box(w + .34, .16, d - .5, '#4a5b58', 0, h + .78, 0, group);
+      // ---- Wheeled vehicles: one distinct silhouette per type ----
+      const isBus = bus || train;
+      box(w, .55, d, color, 0, .8, 0, group);                                  // chassis
+      if (isBus) {
+        box(w, h - .5, d, color, 0, .5 + (h - .5) / 2, 0, group);              // tall body
+        box(w - .2, .9, .1, '#45717a', 0, h - 1.05, -d / 2 - .01, group, { transparent: true, opacity: .5 });
+        for (const side of [-1, 1]) for (let zz = -d / 2 + 1.4; zz <= d / 2 - 1.4; zz += bus ? 1.9 : 2.6) box(.08, .9, 1.15, '#8fb8bd', side * (w / 2 + .01), h - 1.05, zz, group, { transparent: true, opacity: .5 });
+        if (bus) for (let zz = -d / 2 + 2; zz < d / 2 - 1; zz += 1.5) for (const side of [-1, 1]) box(.65, .4, .7, '#719088', side * (w / 2 - .55), .9, zz, group);
+        box(w * .6, .22, 1.7, '#9aa4a0', 0, h + .12, d * .2, group);           // roof AC
+        label(train ? '南京地铁 · COAST METRO' : '01 · 南京公交', 0, h - .2, -d / 2 - .1, w - .2, group);
+      } else if (type === 'van') {
+        box(w, h - .5, d * .76, color, 0, .5 + (h - .5) / 2, .14, group);      // cargo box
+        box(w * .9, .5, 1.2, '#8fb8bd', 0, 1.4, -d / 2 + .32, group, { transparent: true, opacity: .4 });
+        for (const side of [-1, 1]) box(.06, .5, d * .42, '#8fb8bd', side * w / 2, 1.4, .42, group, { transparent: true, opacity: .28, depthWrite: false });
+        box(w - .3, .1, d * .5, '#9aa4a0', 0, h + .06, .1, group);
+      } else if (type === 'pickup') {
+        box(w * .96, .58, d * .42, color, 0, 1.18, -d * .16, group);           // cab
+        box(w * .98, .12, d * .42, color, 0, h + .04, -d * .16, group);        // cab roof
+        box(w * .8, .42, .08, '#6b9ca2', 0, 1.32, -d * .34, group, { transparent: true, opacity: .5 });
+        for (const side of [-1, 1]) box(.12, .5, d * .44, color, side * (w / 2 - .05), 1.1, d * .27, group);
+        box(w - .3, .42, .12, color, 0, 1.02, d * .48, group);                 // tailgate
+      } else if (type === 'sport') {
+        box(w * .96, .42, d * .5, color, 0, 1.0, .06, group);                  // low cabin
+        box(w * .8, .34, .08, '#6b9ca2', 0, 1.12, -d * .16, group, { transparent: true, opacity: .5 });
+        box(w + .06, .12, d * .5, '#2b3234', 0, .52, 0, group);                // side skirt
+        box(w * .92, .07, .42, '#2b3234', 0, h + .22, d * .44, group);         // rear wing
+        for (const side of [-1, 1]) box(.12, .26, .22, '#2b3234', side * w * .36, h + .08, d * .44, group);
+      } else if (type === 'jeep') {
+        box(w * .98, .5, d * .66, color, 0, 1.2, .04, group);                  // boxy cabin
+        box(w + .1, .5, d, color, 0, h + .3, 0, group);                        // roof slab
         for (const side of [-1, 1]) for (const zz of [d / 2 - .6, -d / 2 + .6]) box(.16, h + .5, .16, '#39494b', side * (w / 2 - .05), h / 2 + .5, zz, group);
-        box(.3, .16, .16, '#e2d48f', w / 2 + .1, 1.5, .6, group, { emissive: '#e2d48f', emissiveIntensity: .4 });
+        for (const side of [-1, 1]) box(w + .12, .16, .5, '#39494b', 0, .8, side * (d / 2 - .55), group);
+        { const spare = new THREE.Mesh(new THREE.CylinderGeometry(.55, .55, .24, 16), material('#263235')); spare.rotation.x = Math.PI / 2; spare.position.set(0, 1.35, d / 2 + .18); group.add(spare); }
+        box(.3, .16, .16, '#e2d48f', w / 2 + .1, 1.7, .6, group, { emissive: '#e2d48f', emissiveIntensity: .4 });
+      } else {
+        // sedan / taxi / police: hood + cabin + trunk
+        box(w * .94, .5, d * .5, color, 0, 1.2, .06, group);
+        box(w + .02, .26, d * .3, color, 0, 1.0, -d * .35, group);
+        box(w + .02, .26, d * .22, color, 0, 1.0, d * .37, group);
+        box(w * .78, .42, .08, '#6b9ca2', 0, 1.32, -d * .16, group, { transparent: true, opacity: .5 });
+        box(w * .76, .38, .08, '#6b9ca2', 0, 1.3, d * .18, group, { transparent: true, opacity: .45 });
       }
-      if (type === 'ev') {
-        box(w + .06, .12, d - .8, '#9fd8c4', 0, h + .16, .3, group, { emissive: '#63c6a4', emissiveIntensity: .4 });
-        box(w - .5, .1, .9, '#bfe8da', 0, .95, d / 2 - .1, group, { emissive: '#63c6a4', emissiveIntensity: .35 });
+      if (!isBus) for (const side of [-1, 1]) box(.06, .4, d * .46, '#6b9ca2', side * w / 2, 1.24, .03, group, { transparent: true, opacity: .25, depthWrite: false });
+      for (const side of [-1, 1]) {
+        box(.34, .18, .12, '#fdf6d8', side * w * .3, .74, -d / 2 - .01, group, { emissive: '#ffedb0', emissiveIntensity: .85 });
+        box(.3, .16, .12, '#c0392b', side * w * .3, .78, d / 2 + .01, group, { emissive: '#ff4d3a', emissiveIntensity: .6 });
+        if (!isBus) box(.2, .12, .3, '#4a5457', side * (w / 2 + .08), 1.22, -d * .12, group);
       }
-      if (type === 'police') { box(1.5, .2, .4, '#344b51', 0, 1.9, 0, group); box(.6, .2, .35, '#db787a', -.4, 2.1, 0, group, { emissive: '#ff3333', emissiveIntensity: 1 }); box(.6, .2, .35, '#758edb', .4, 2.1, 0, group, { emissive: '#334dff', emissiveIntensity: 1 }); }
-      if (bus || train) { label(train ? '南京地铁 · COAST METRO' : '01 · 南京公交', 0, h - .2, -d / 2 - .08, w - .2, group); for (let zz = -d / 2 + 2; zz < d / 2 - 1; zz += 1.5) for (const side of [-1, 1]) box(.65, .4, .7, '#719088', side * (w / 2 - .55), .9, zz, group); }
-      door = box(.14, bus || train ? 2.5 : 1, 1.5, '#678b91', w / 2 + .05, bus || train ? 1.7 : 1.2, bus ? -3.5 : 0, group, { transparent: true, opacity: .55 });
+      box(w + .04, .22, .14, '#3a4446', 0, .6, -d / 2 - .02, group);
+      box(w + .04, .22, .14, '#3a4446', 0, .6, d / 2 + .02, group);
+      if (type === 'taxi') label('TAXI', 0, h + .55, 0, 2.6, group);
+      if (type === 'police') { box(1.5, .2, .4, '#344b51', 0, h + .12, 0, group); box(.6, .2, .35, '#db787a', -.4, h + .32, 0, group, { emissive: '#ff3333', emissiveIntensity: 1 }); box(.6, .2, .35, '#758edb', .4, h + .32, 0, group, { emissive: '#334dff', emissiveIntensity: 1 }); label('POLICE', 0, .95, -d / 2 - .1, 3.4, group); }
+      if (!train) for (const side of [-1, 1]) for (const zz of [-d * .32, d * .32]) {
+        const r = bus ? .6 : type === 'jeep' ? .64 : type === 'sport' ? .46 : .43;
+        const wheel = new THREE.Mesh(new THREE.CylinderGeometry(r, r, .24, 12), material('#263235'));
+        wheel.rotation.z = Math.PI / 2; wheel.position.set(side * w / 2, bus ? .5 : type === 'jeep' ? .66 : .5, zz); group.add(wheel); wheels.push(wheel);
+      }
+      door = box(.14, isBus ? 2.5 : 1, 1.5, '#678b91', w / 2 + .05, isBus ? 1.7 : 1.2, bus ? -3.5 : 0, group, { transparent: true, opacity: .55 });
     }
     // Aircraft models are built nose-first along +z; vehicles travel along -z,
     // so bake a 180° flip so they face their direction of travel.
-    if (heli || plane) group.rotation.y = Math.PI;
+    if (heli || plane) { group.rotation.order = 'YXZ'; group.rotation.y = Math.PI; }
     const value = { type, group, w, d, h, wheels, door, rotor, prop, speed: 0, yaw: 0, alt: group.position.y, shared: false, stolen: false, ai: false, route: [], routeIndex: 0, passengers: [], doors: 0, damage: 0, ...options };
     vehicles.push(value); return value;
   }
@@ -177,6 +236,7 @@ export function createVehicles(world, scene) {
     return null;
   }
   function updatePeds(dt, player, driven) {
+    walkT += dt;
     for (const p of peds) {
       if (p.state === 'hit') {
         p.group.position.addScaledVector(p.vel, dt); p.vel.y -= 22 * dt;
@@ -189,6 +249,7 @@ export function createVehicles(world, scene) {
         const len = dist || 1;
         p.group.position.x += dx / len * 4.2 * dt; p.group.position.z += dz / len * 4.2 * dt;
         p.group.rotation.y = Math.atan2(-dx, -dz);
+        animatePerson(p.group, walkT, 4.2);
         continue;
       }
       const road = p.road, dxr = road.b.x - road.a.x, dzr = road.b.z - road.a.z, len = Math.hypot(dxr, dzr) || 1;
@@ -196,6 +257,7 @@ export function createVehicles(world, scene) {
       if (p.u > 1) { p.u = 1; p.dir = -1; } else if (p.u < 0) { p.u = 0; p.dir = 1; }
       p.group.position.set(road.a.x + dxr * p.u + Math.cos(road.angle) * p.offset * p.side, 0, road.a.z + dzr * p.u - Math.sin(road.angle) * p.offset * p.side);
       p.group.rotation.y = Math.atan2(-dxr * p.dir, -dzr * p.dir);
+      animatePerson(p.group, walkT, p.speed);
     }
   }
   let spawnTimer = 0;
