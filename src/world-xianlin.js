@@ -213,6 +213,26 @@ export function createXianlinWorld(scene) {
   const nearEnterable = (cx, cz) => skipCenters.some(([x, z]) => Math.abs(cx - x) < 30 && Math.abs(cz - z) < 30);
   const PALETTE = ['#c7b8a5', '#cdb9ab', '#aebdb5', '#b7bdba', '#c1aa99', '#d3c8b0'];
   const colorFor = tag => (/dorm/.test(tag) ? '#cdc3ab' : /apartment/.test(tag) ? '#c8bfa8' : /university|college|school|institute/.test(tag) ? '#c2bfae' : null);
+  // Window facades + roof material per building colour.
+  const facadeCache = new Map();
+  function facadeMat(color) {
+    if (facadeCache.has(color)) return facadeCache.get(color);
+    const c = document.createElement('canvas'); c.width = c.height = 64; const g = c.getContext('2d');
+    g.fillStyle = color; g.fillRect(0, 0, 64, 64);
+    g.fillStyle = 'rgba(38,58,70,.55)';
+    for (let gy = 7; gy < 64; gy += 20) for (let gx = 7; gx < 64; gx += 16) g.fillRect(gx, gy, 9, 12);
+    g.fillStyle = 'rgba(210,220,200,.18)'; for (let gy = 7; gy < 64; gy += 20) g.fillRect(0, gy + 12, 64, 2);
+    g.strokeStyle = 'rgba(255,255,255,.06)'; g.strokeRect(.5, .5, 63, 63);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 3.6, 1 / 3.6);
+    const m = new THREE.MeshStandardMaterial({ map: t, roughness: .9 }); facadeCache.set(color, m); return m;
+  }
+  const roofMat = (() => {
+    const c = document.createElement('canvas'); c.width = c.height = 32; const g = c.getContext('2d');
+    g.fillStyle = '#9aa0a0'; g.fillRect(0, 0, 32, 32);
+    g.fillStyle = 'rgba(0,0,0,.09)'; for (let i = 0; i < 46; i++) g.fillRect((i * 7) % 32, (i * 13) % 32, 3, 2);
+    const t = new THREE.CanvasTexture(c); t.colorSpace = THREE.SRGBColorSpace; t.wrapS = t.wrapT = THREE.RepeatWrapping; t.repeat.set(1 / 6, 1 / 6);
+    return new THREE.MeshStandardMaterial({ map: t, roughness: .95 });
+  })();
   const groups = new Map();
   let labeled = 0;
   for (const [name, tag, h, ring] of FOOTPRINTS) {
@@ -230,10 +250,15 @@ export function createXianlinWorld(scene) {
     if (name && LABELED.test(name) && labeled < 46) { label(name, cx, h + 4, cz, Math.min((maxX - minX) * 1.1, 34)); labeled++; }
   }
   for (const [color, geos] of groups) {
-    const merged = mergeGeometries(geos, false);
+    const merged = mergeGeometries(geos, true);
     geos.forEach(g => g.dispose());
-    const mesh = new THREE.Mesh(merged, material(color)); mesh.receiveShadow = true; mesh.castShadow = false; scene.add(mesh);
+    const mesh = new THREE.Mesh(merged, [roofMat, facadeMat(color)]); mesh.receiveShadow = true; scene.add(mesh);
   }
+  // Landmark: Left Dijiang Observatory dome (左涤江天文台).
+  const dome = new THREE.Mesh(new THREE.SphereGeometry(11, 22, 12, 0, Math.PI * 2, 0, Math.PI / 2), material('#cfd6d4', { metalness: .2 }));
+  dome.position.set(443, 22, -489); dome.receiveShadow = true; scene.add(dome);
+  const domeBase = new THREE.Mesh(new THREE.CylinderGeometry(11.4, 11.4, 1.2, 22), material('#b9bdb8'));
+  domeBase.position.set(443, 21.4, -489); scene.add(domeBase);
 
   // Food towers and dorm towers (real coords, walk-in).
   for (const t of FOOD_TOWERS) tower({ ...t, levels: 2, h: 5, food: true });
