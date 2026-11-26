@@ -1,51 +1,104 @@
 import * as THREE from 'three';
 import { buildRoads } from './road-network.js';
+import { ROADS, BOUNDARY } from './xianlin-roads.js';
 
-// Nanjing University Xianlin Campus (南京大学仙林校区). A stylised game map
-// that keeps the real relative layout — South Gate on Xianlin Avenue, the
-// central axis running north to Du Xia Library, teaching blocks west, dorms
-// and stadium east — but the scale and footprints are game metres, not survey
-// data. No metro line here; campus shuttle buses instead.
+// Nanjing University Xianlin Campus (南京大学仙林校区), rebuilt from real
+// OpenStreetMap data: road centrelines, building positions and the campus
+// outline are projected from lat/lon to game metres (x = east, z = south).
+// Scale is 1 unit = 1 metre; buildings are simplified boxes. Not survey data.
 
-export const xianlinBounds = { minX: -1400, maxX: 1400, minZ: -1500, maxZ: 1500 };
+export const xianlinBounds = { minX: -800, maxX: 1120, minZ: -1220, maxZ: 1160 };
 
 export const xianlinDistricts = [
-  { name: '南京大学 · 仙林校区', x: 0, z: -80, w: 1500, d: 1750 },
-  { name: '杜厦图书馆', x: 0, z: -220, w: 150, d: 110 },
-  { name: '学生生活区', x: 280, z: -620, w: 380, d: 340 },
-  { name: '体育区', x: 250, z: 480, w: 380, d: 360 },
-  { name: '教学区', x: -280, z: -40, w: 360, d: 760 },
-  { name: '南门外 · 出生点', x: 0, z: 1060, w: 620, d: 320 },
-  { name: '仙林大道', x: 0, z: 900, w: 1800, d: 60 },
+  { name: '南京大学 · 仙林校区', x: 200, z: 0, w: 1900, d: 2100 },
+  { name: '杜厦图书馆', x: 386, z: 376, w: 180, d: 140 },
+  { name: '学生宿舍区', x: 20, z: 300, w: 560, d: 620 },
+  { name: '西区 · 理科楼群', x: -200, z: -160, w: 560, d: 560 },
+  { name: '北区 · 学生公寓', x: -340, z: -700, w: 460, d: 340 },
+  { name: '东区 · 行政文体区', x: 660, z: 470, w: 440, d: 440 },
+  { name: '南区 · 基础实验楼', x: 120, z: 790, w: 620, d: 200 },
+  { name: '南门外 · 出生点', x: 455, z: 1030, w: 520, d: 320 },
 ];
 
 export const xianlinBusStops = [
-  { name: '南大南门', x: 0, z: 780, vertical: true },
-  { name: '杜厦图书馆', x: 0, z: -40, vertical: false },
-  { name: '学生宿舍', x: 440, z: -430, vertical: true },
-  { name: '方肇周体育馆', x: 440, z: 130, vertical: true },
-  { name: '大学生活动中心', x: -440, z: -40, vertical: true },
-  { name: '西门便利店', x: -440, z: 380, vertical: true },
+  { name: '南大南门', x: 476, z: 806, vertical: true },
+  { name: '杜厦图书馆', x: 582, z: 468, vertical: false },
+  { name: '学生宿舍区', x: 241, z: 509, vertical: false },
+  { name: '西区教学楼', x: 49, z: 416, vertical: false },
+  { name: '行政文体区', x: 778, z: 396, vertical: false },
 ];
-export const xianlinBusDepot = { x: 260, z: 1150 };
-export const xianlinSpawn = { x: 0, z: 1049, yaw: Math.PI };
+export const xianlinBusDepot = { x: 560, z: 1000 };
+export const xianlinSpawn = { x: 455, z: 1000, yaw: Math.PI };
 
-export const xianlinCorridors = [
-  ['仙林大道', 40, [[-900, 900], [0, 900], [900, 900]], 'main'],
-  ['南大路', 26, [[0, 900], [0, 780], [0, -40]], 'main'],
-  ['学府路', 22, [[-440, 860], [-440, 380], [-440, -40], [-440, -430], [-440, -800]], 'second'],
-  ['学则路', 22, [[440, 860], [440, 380], [440, -40], [440, -430], [440, -800]], 'second'],
-  ['涌泉路', 18, [[-440, 380], [0, 380], [440, 380]], 'second'],
-  ['明湖路', 18, [[-440, -40], [0, -40], [440, -40]], 'second'],
-  ['逸夫路', 18, [[-440, -430], [0, -430], [440, -430]], 'second'],
-  ['北环路', 20, [[-440, -800], [0, -800], [440, -800]], 'second'],
-  ['南门支路', 16, [[0, 900], [0, 1060], [0, 1180]], 'local'],
-  ['体育场路', 14, [[440, 380], [700, 420], [820, 470]], 'local'],
+// [name, x, z, w, d, h, type] — real OSM building centres (metres).
+const BUILDINGS = [
+['杜厦图书馆',386,376,72,52,26,'lib'],
+['学生宿舍1幢',-121,573,20,44,20,'dorm'],
+['学生宿舍2幢',-65,391,20,44,20,'dorm'],
+['学生宿舍3幢',-177,438,20,44,20,'dorm'],
+['学生宿舍4幢',-121,264,20,44,20,'dorm'],
+['学生宿舍5幢',-232,308,20,44,20,'dorm'],
+['学生宿舍6幢',151,254,20,44,20,'dorm'],
+['学生宿舍7幢',47,314,20,44,20,'dorm'],
+['学生宿舍8幢',104,195,20,44,20,'dorm'],
+['学生宿舍9幢',1,207,20,44,20,'dorm'],
+['学生宿舍10幢',54,149,20,44,20,'dorm'],
+['学生宿舍11幢',5,67,20,44,20,'dorm'],
+['学生第八、九餐厅',-48,90,44,52,9,'food'],
+['学生第四、五、六餐厅',-80,695,64,52,9,'food'],
+['学生第十食堂',675,282,44,44,9,'food'],
+['学生第十一餐厅',-362,-579,32,30,8,'food'],
+['敬文学生活动中心',150,420,62,50,16,'activity'],
+['校史馆（沈小平楼）',214,333,40,30,14,'museum'],
+['南京大学档案馆',331,269,40,34,18,'hall'],
+['游泳馆',222,148,50,40,14,'gym'],
+['体育馆（第二体育场）',-421,-405,72,52,18,'gym'],
+['公共教学楼一区',350,602,66,42,18,'hall'],
+['公共教学楼二区',289,583,66,42,18,'hall'],
+['基础实验楼',100,805,72,26,20,'dept'],
+['国际学院',314,779,40,34,18,'dept'],
+['逸夫楼',365,763,44,36,18,'dept'],
+['左涤江楼',336,758,40,30,16,'dept'],
+['匡亚明学院',406,96,40,34,18,'dept'],
+['社会学院',383,-77,64,42,18,'dept'],
+['历史学院',313,-156,36,30,16,'dept'],
+['大气科学学院',-70,-34,64,48,20,'dept'],
+['环境学院',-252,41,50,40,18,'dept'],
+['化学化工学院',-310,-120,150,120,22,'dept'],
+['生命科学学院',-90,-197,70,50,18,'dept'],
+['信息管理学院',428,57,36,30,16,'dept'],
+['信息化建设管理服务中心',414,254,36,30,16,'hall'],
+['侨裕楼（外国语学院）',473,131,44,36,18,'dept'],
+['扬州楼（行政北楼）',654,523,80,50,22,'hall'],
+['行政南楼',669,607,70,44,20,'hall'],
+['南大国际会议中心',663,354,70,44,20,'hall'],
+['南京大学美术馆',643,395,40,30,14,'museum'],
+['左涤江天文台',443,-489,26,26,22,'land'],
+['天文与空间科学学院',373,-870,54,44,20,'dept'],
+['协同创新大厦',731,-894,52,44,26,'hall'],
+['学生宿舍15幢',691,217,20,40,18,'dorm'],
+['学生公寓16幢',-441,-561,20,40,18,'dorm'],
+['学生公寓17幢',-432,-654,20,40,18,'dorm'],
+['学生公寓18幢',-428,-744,20,40,18,'dorm'],
+['学生公寓19幢',-354,-751,20,40,18,'dorm'],
+['学生公寓20幢',-280,-761,20,40,18,'dorm'],
+['学生公寓21幢',-206,-767,20,40,18,'dorm'],
+['学生宿舍25幢',300,-826,20,40,18,'dorm'],
+['量子材料微结构研究中心',300,-893,40,34,20,'dept'],
+['淳朴亭',-12,-116,10,10,8,'land'],
+['花房',-208,100,30,20,7,'dc'],
+['气象观测站',179,-95,16,16,6,'land'],
+['垃圾场',633,150,20,20,5,'dc'],
 ];
+
+const DORM_TOWERS = new Set(['学生宿舍8幢', '学生宿舍11幢', '学生公寓16幢', '学生公寓18幢', '学生宿舍25幢']);
+const FOOD_TOWERS = new Set(['学生第四、五、六餐厅', '学生第八、九餐厅']);
+const ENTERABLE = new Set(['杜厦图书馆', '敬文学生活动中心', '校史馆（沈小平楼）', '游泳馆', '体育馆（第二体育场）']);
+const FILLER = { dept: '#b7bdba', hall: '#c2bfae', land: '#b0a488', dc: '#9f9a86' };
 
 export function createXianlinWorld(scene) {
   const materials = new Map();
-  const solids = [], floors = [], interactables = [], buildings = [], roads = [], nodes = [], water = [];
+  const solids = [], floors = [], interactables = [], buildings = [], roads = [], nodes = [], water = [], towers = [];
   const material = (color, extra = {}) => {
     const key = color + JSON.stringify(extra);
     if (!materials.has(key)) materials.set(key, new THREE.MeshStandardMaterial({ color, roughness: .8, ...extra }));
@@ -87,20 +140,17 @@ export function createXianlinWorld(scene) {
     return { mesh, set: draw };
   }
   function point(x, z) { const n = { x, z, links: [], id: nodes.length }; nodes.push(n); return n; }
-  function road(a, b, width = 22, sidewalk = true, name = '校园道路', kind = 'second') {
+  function road(a, b, width = 14, sidewalk = true, name = '校园道路', kind = 'road') {
     a.links.push(b.id); b.links.push(a.id);
     const dx = b.x - a.x, dz = b.z - a.z, length = Math.hypot(dx, dz), angle = Math.atan2(dx, dz), x = (a.x + b.x) / 2, z = (a.z + b.z) / 2;
     const isLocal = width < 12;
     if (sidewalk) {
-      const extra = isLocal ? 1 : width >= 30 ? 12 : 8;
+      const extra = isLocal ? 1 : width >= 30 ? 12 : 6;
       const walk = box(width + extra, .18, length + width, isLocal ? '#aeac9c' : '#c3c1b0', x, -.05, z); walk.rotation.y = angle;
     }
     const mesh = box(width, .13, length + width, isLocal ? '#5b5f59' : '#48565b', x, .08, z); mesh.rotation.y = angle;
-    for (let t = 12; width >= 12 && t < length - 10; t += 16) {
-      const line = box(.19, .025, 6, '#eadab0', a.x + dx * t / length, .16, a.z + dz * t / length); line.rotation.y = angle;
-    }
-    for (const side of [-1, 1]) {
-      const edge = box(.15, .025, length, '#d7d6c3', x + Math.cos(angle) * (width / 2 - 1) * side, .16, z - Math.sin(angle) * (width / 2 - 1) * side); edge.rotation.y = angle;
+    for (let t = 12; width >= 14 && t < length - 10; t += 18) {
+      const line = box(.16, .025, 6, '#eadab0', a.x + dx * t / length, .16, a.z + dz * t / length); line.rotation.y = angle;
     }
     if (width >= 30) for (const side of [-1, 1]) {
       const lane = box(.11, .025, length, '#bcc4bc', x + Math.cos(angle) * width / 4 * side, .16, z - Math.sin(angle) * width / 4 * side); lane.rotation.y = angle;
@@ -176,177 +226,148 @@ export function createXianlinWorld(scene) {
     towers.push(building); return building;
   }
 
-  buildRoads(xianlinCorridors, point, road);
+  // Roads straight from OSM centrelines.
+  buildRoads(ROADS.map(([pts, width, name, kind]) => [name, width, pts, kind]), point, road);
 
-  // Ground plate, lawns and the South Gate on Xianlin Avenue.
-  box(2960, .12, 3160, '#8d9d79', 0, -.18, 0);
-  const campusGround = box(1560, .08, 1780, '#6f8a5d', 0, .02, -60);
-  for (const [x, z, w, d, c] of [[-260, 120, 160, 130, '#7b9464'], [250, 130, 180, 140, '#7b9464'], [0, -230, 240, 150, '#879b6c'], [220, 720, 220, 150, '#7b9464']]) box(w, .05, d, c, x, .06, z);
-  const gateZ = 780;
-  for (const sx of [-13, 13]) { solid(6, 12, 6, '#b9b09a', sx, 6, gateZ); box(7, 1.4, 7, '#8f8672', sx, 12.4, gateZ); }
-  box(32, 1.6, 3, '#c2b9a3', 0, 12.6, gateZ); box(30, 1, 2.4, '#8f8672', 0, 13.6, gateZ);
-  label('南京大学 · 仙林校区 · 南门', 0, 16, gateZ, 30);
-  box(40, .12, 40, '#b9b4a2', 0, .04, 792);
+  // Ground plate, campus lawn (real outline) and the Jiuxiang River on the west.
+  box(3200, .12, 3400, '#8d9d79', 150, -.18, -20);
+  const lawn = new THREE.Mesh(new THREE.ShapeGeometry((() => {
+    const shape = new THREE.Shape(); shape.moveTo(BOUNDARY[0][0], BOUNDARY[0][1]);
+    for (let i = 1; i < BOUNDARY.length; i++) shape.lineTo(BOUNDARY[i][0], BOUNDARY[i][1]);
+    shape.closePath(); return shape;
+  })()), material('#6f8a5d', { side: THREE.DoubleSide }));
+  lawn.rotation.x = Math.PI / 2; lawn.position.y = .02; scene.add(lawn);
+  const river = box(70, .12, 2200, '#5b8e92', -560, .03, -60, scene, { roughness: .3, metalness: .2 });
+  water.push({ x: -560, z: -60, w: 70, d: 2200 });
 
-  // Du Xia Library (enterable, on the central axis).
-  const library = shell('杜厦图书馆 · 借阅大厅', 0, -220, 76, 54);
-  solid(84, 1.2, 62, '#c7bfab', 0, .5, -220);
-  for (let i = 0; i < 5; i++) box(18 - i * 1.8, .18, 5, '#d8d3c0', 0, .72 + i * .22, -192 - i * 3.2);
-  for (const z of [-238, -220, -202]) for (const x of [-30, -18, -6, 6, 18, 30]) { solid(3, .9, 6, '#8d775c', x, .75, z); box(2.8, .1, 5.6, '#d8d1b6', x, 1.23, z); }
-  interactables.push({ type: 'info', name: '校史导览 · 后续任务', x: 0, z: -196, y: 0, message: '校史导览、校园跑腿与图书馆任务将在这里接入。' });
-  interactables.push({ type: 'info', name: '借阅馆藏', x: -18, z: -238, y: 0, message: '翻阅馆藏：南京大学史与仙林校区建筑档案。' });
-  label('DU XIA LIBRARY', 0, 8, -193, 30);
-
-  // Student No.1 Canteen (food, enterable) and dorm towers (delivery).
-  const towers = [];
-  tower({ name: '学生第一食堂', x: 215, z: -220, w: 44, d: 34, levels: 2, h: 5, food: true });
-  for (const [name, x, z] of [['学生宿舍 3 栋', 170, -620], ['学生宿舍 4 栋', 270, -620], ['学生宿舍 5 栋', 370, -620]]) {
-    const t = tower({ name, x, z, w: 22, d: 20, levels: 6, h: 3 });
-    for (let f = 1; f < t.levels; f++) {
-      const y = f * t.h;
-      box(.16, 2.15, 1.25, '#7a5f45', x + t.w / 2 - .28, y + 1.07, z + 3.2);
-      box(2.6, .28, 1.5, '#8f9c8b', x + t.w / 2 - .6, y + 2.35, z + 3.2);
-      interactables.push({ type: 'delivery', name: `${name} · ${f + 1}0${f}室`, x: t.doorX, z: z + 3.2, y, building: name, floor: f, room: `${f + 1}0${f}` });
-      label(`${f + 1}0${f}`, x + t.w / 2 - .1, y + 1.6, z + 3.2, 2.2, scene, Math.PI / 2);
-    }
+  // Buildings: enterable shells, food/dorm towers, and plain solids for the rest.
+  for (const [name, x, z, w, d, h, type] of BUILDINGS) {
+    if (DORM_TOWERS.has(name)) { tower({ name, x, z, w: 22, d: 20, levels: 6, h: 3 }); continue; }
+    if (type === 'food' && FOOD_TOWERS.has(name)) continue; // built as food towers below
+    if (ENTERABLE.has(name)) continue; // built as shells below
+    if (type === 'food') { tower({ name, x, z, w, d, levels: 2, h: 5, food: true }); continue; }
+    const color = FILLER[type] || '#b7bdba';
+    solid(w, h, d, color, x, h / 2, z);
+    box(w + 1, .7, d + 1, '#d8d1bb', x, h, z);
+    label(name, x, h + 3, z + d / 2 + .3, Math.min(w, 26));
   }
 
-  // Student Activity Centre (enterable, with a stage).
-  const activity = shell('大学生活动中心', -260, 120, 62, 42);
-  solid(40, 1.2, 10, '#7c5f6b', -260, .6, 132);
-  solid(30, 3, 1.2, '#6f5560', -260, 2.9, 137);
-  label('STAGE', -260, 3.4, 134, 12);
-  for (let i = 0; i < 6; i++) for (let j = 0; j < 3; j++) box(5, .6, 3, '#7c8478', -292 + i * 13, .3, 110 + j * 8);
-  interactables.push({ type: 'showcase', name: '社团展台 · 预留', x: -280, z: 108, y: 0, message: '社团活动、演出席位与更多互动道具将在这里开放。' });
+  // Food towers (real canteens).
+  tower({ name: '学生第四、五、六餐厅', x: -80, z: 695, w: 44, d: 30, levels: 2, h: 5, food: true });
+  tower({ name: '学生第八、九餐厅', x: -48, z: 90, w: 40, d: 34, levels: 2, h: 5, food: true });
 
-  // Fang Zhaozhou Gymnasium (enterable).
-  const gym = shell('方肇周体育馆', 250, 130, 72, 52);
-  box(38, .06, 24, '#b98e5c', 250, .06, 130); box(34, .05, 20, '#c9a26b', 250, .09, 130);
-  for (const x of [230, 250, 270]) solid(3, 3, 1, '#8a8f86', x, 1.5, 130);
-  for (let i = 0; i < 5; i++) box(10, 1, 3, '#7b8c93', 220 + i * 15, .5, 148);
-  interactables.push({ type: 'showcase', name: '器材架 · 预留', x: 226, z: 148, y: 0, message: '球类、器械等交互道具后续会在此陈列。' });
+  // Enterable shells at their real positions.
+  const library = shell('杜厦图书馆 · 借阅大厅', 386, 376, 72, 50);
+  solid(80, 1.2, 58, '#c7bfab', 386, .5, 376);
+  for (let i = 0; i < 5; i++) box(20 - i * 2, .18, 5, '#d8d3c0', 386, .72 + i * .22, 404 - i * 3.2);
+  for (const z of [356, 376, 396]) for (const x of [360, 372, 384, 396, 408]) { solid(3, .9, 6, '#8d775c', x, .75, z); box(2.8, .1, 5.6, '#d8d1b6', x, 1.23, z); }
+  interactables.push({ type: 'info', name: '校史导览 · 后续任务', x: 386, z: 400, y: 0, message: '校史导览、校园跑腿与图书馆任务将在这里接入。' });
+  interactables.push({ type: 'info', name: '借阅馆藏', x: 410, z: 356, y: 0, message: '翻阅馆藏：南京大学史与仙林校区建筑档案。' });
 
-  // Campus convenience store (theft + shop).
-  const store = shell('校园便利店', -270, 560, 30, 26, { backGap: 0 });
-  for (const x of [-280, -270, -260]) for (const z of [556, 564]) {
+  const activity = shell('敬文学生活动中心', 150, 420, 62, 50);
+  solid(40, 1.2, 10, '#7c5f6b', 150, .6, 434);
+  solid(30, 3, 1.2, '#6f5560', 150, 2.9, 439);
+  label('STAGE', 150, 3.4, 436, 12);
+  interactables.push({ type: 'showcase', name: '社团展台 · 预留', x: 132, z: 408, y: 0, message: '社团活动、演出席位与更多互动道具将在这里开放。' });
+
+  const museum = shell('校史馆 · 展览馆', 214, 333, 40, 30);
+  for (const x of [200, 214, 228]) { solid(5, 1.1, 1.6, '#8d7964', x, .55, 333); box(5, 1.6, .2, '#cbc4ad', x, 1.8, 325); }
+  interactables.push({ type: 'info', name: '校史陈列 · 后续任务', x: 214, z: 322, y: 0, message: '校史展览与寻访任务将在这里接入。' });
+
+  const pool = shell('游泳馆', 222, 148, 50, 40);
+  box(36, .05, 22, '#4f8ea0', 222, .08, 148);
+  box(34, .04, 20, '#66b0c4', 222, .12, 148);
+
+  const gym = shell('方肇周体育馆 · 第二体育场', -421, -405, 72, 52);
+  box(40, .06, 26, '#b98e5c', -421, .06, -405); box(36, .05, 22, '#c9a26b', -421, .09, -405);
+  interactables.push({ type: 'showcase', name: '器材架 · 预留', x: -445, z: -390, y: 0, message: '球类、器械等交互道具后续会在此陈列。' });
+  const track = new THREE.Mesh(new THREE.RingGeometry(52, 66, 40), material('#b06a58', { side: THREE.DoubleSide }));
+  track.rotation.x = -Math.PI / 2; track.position.set(-421, .13, -300); track.scale.set(1.35, 1, 1); scene.add(track);
+  box(120, .05, 100, '#5c7f49', -421, .12, -300);
+
+  // Campus convenience store near the dorm cluster.
+  const store = shell('校园便利店', 150, 300, 30, 26, { backGap: 0 });
+  for (const x of [140, 150, 160]) for (const z of [296, 304]) {
     solid(3.4, 1.4, 2, '#9a805f', x, .7, z);
     for (let i = 0; i < 4; i++) {
       const mesh = box(.4, .5, .5, ['#d2ac6c', '#98b685', '#ca8b79'][i % 3], x - 1 + i * .6, 1.7, z);
       interactables.push({ type: 'goods', name: '拿取商品 · 偷窃', x: x - 1 + i * .6, z: z + 1.4, y: 0, mesh, taken: false });
     }
   }
-  solid(5.4, .6, 2, '#8f8a78', -270, 1.7, 547.4);
-  const stockDoor = door(-271.35, 547, '仓库门 · 按住 F 撬锁', { locked: true });
-  floor(-270, 539, 26, 14);
-  solid(26, 3.6, .3, '#a9a28e', -270, 1.8, 532);
-  solid(.3, 3.6, 14, '#a9a28e', -283, 1.8, 539); solid(.3, 3.6, 14, '#a9a28e', -257, 1.8, 539);
-  interactables.push({ type: 'loot', x: -270, z: 538, y: 0, name: '取走仓库物资', door: stockDoor, taken: false });
-  box(6, 1.1, 2, '#4e6560', -260, .55, 570);
-  interactables.push({ type: 'shop', x: -260, z: 568, y: 0, name: '购买补给 $30' });
+  solid(5.4, .6, 2, '#8f8a78', 150, 1.7, 287.4);
+  const stockDoor = door(148.65, 287, '仓库门 · 按住 F 撬锁', { locked: true });
+  floor(150, 279, 26, 14);
+  solid(26, 3.6, .3, '#a9a28e', 150, 1.8, 272);
+  solid(.3, 3.6, 14, '#a9a28e', 137, 1.8, 279); solid(.3, 3.6, 14, '#a9a28e', 163, 1.8, 279);
+  interactables.push({ type: 'loot', x: 150, z: 278, y: 0, name: '取走仓库物资', door: stockDoor, taken: false });
+  box(6, 1.1, 2, '#4e6560', 160, .55, 310);
+  interactables.push({ type: 'shop', x: 160, z: 308, y: 0, name: '购买补给 $30' });
 
-  // School history museum (enterable).
-  const museum = shell('校史馆 · 展览馆', 230, 700, 38, 26);
-  for (const x of [216, 230, 244]) { solid(5, 1.1, 1.6, '#8d7964', x, .55, 700); box(5, 1.6, .2, '#cbc4ad', x, 1.8, 692); }
-  interactables.push({ type: 'info', name: '校史陈列 · 后续任务', x: 230, z: 690, y: 0, message: '校史展览与寻访任务将在这里接入。' });
-
-  // Stadium / running track (decorative).
-  const track = new THREE.Mesh(new THREE.RingGeometry(46, 60, 40), material('#b06a58', { side: THREE.DoubleSide }));
-  track.rotation.x = -Math.PI / 2; track.position.set(250, .13, 480); track.scale.set(1.35, 1, 1); scene.add(track);
-  box(96, .05, 74, '#5c7f49', 250, .12, 480);
-  for (const wx of [-2, 0, 2]) box(6, 2, .4, '#d8d3c0', 250 + wx * 8, 1, 480 - 37);
-
-  // Lake.
-  const lake = new THREE.Mesh(new THREE.CircleGeometry(1, 48), material('#6ea6a4', { roughness: .25, metalness: .3 }));
-  lake.rotation.x = -Math.PI / 2; lake.scale.set(120, 78, 1); lake.position.set(-250, .01, -650); scene.add(lake);
-  water.push({ x: -250, z: -650, w: 240, d: 156 });
-  for (const a of [0, 1.2, 2.4, 3.6, 4.8]) box(3, .8, 3, '#5f7f4d', -250 + Math.cos(a) * 118, .5, -650 + Math.sin(a) * 76);
-
-  // Teaching buildings (west).
-  for (const [name, x, z, w, d, h] of [
-    ['逸夫楼', -260, -300, 54, 30, 18], ['费彝民楼', -260, -430, 48, 26, 16],
-    ['教学楼 A', -260, 40, 50, 28, 20], ['教学楼 B', -260, 240, 50, 28, 20], ['理工楼', -260, -600, 56, 30, 22],
-  ]) { solid(w, h, d, '#b7bdba', x, h / 2, z); box(w + 1, .7, d + 1, '#d8d1bb', x, h, z); label(name, x, h + 3, z + d / 2 + .3, Math.min(w, 24)); }
-
-  // Helipad + airstrip.
-  const helipad = { x: 200, z: 1090 };
-  box(24, .12, 24, '#55605c', helipad.x, .04, helipad.z);
-  box(3.6, .12, 3.6, '#dfe7c8', helipad.x - 5.5, .08, helipad.z); box(3.6, .12, 3.6, '#dfe7c8', helipad.x + 5.5, .08, helipad.z);
-  box(.9, .12, 12, '#dfe7c8', helipad.x, .08, helipad.z); box(10, .12, .9, '#dfe7c8', helipad.x, .08, helipad.z);
-  label('HELIPAD', helipad.x, 3.4, helipad.z + 12.4, 16);
-  const airstrip = { x: -150, z: 1055 };
-  box(170, .1, 20, '#4f5855', airstrip.x, .03, airstrip.z);
-  for (let i = -4; i <= 4; i++) box(6, .04, 1.1, '#d9dcc4', airstrip.x + i * 17, .1, airstrip.z);
-  label('金陵飞行场', airstrip.x, 2.6, airstrip.z + 13, 16);
-
-  // Bus depot south of campus.
-  box(90, .15, 70, '#566468', xianlinBusDepot.x, .04, xianlinBusDepot.z);
-  for (let i = -2; i <= 2; i++) box(.2, .03, 34, '#c9c5a8', xianlinBusDepot.x + i * 12, .14, xianlinBusDepot.z);
-  box(34, 4, 10, '#a2b3ab', xianlinBusDepot.x, 2, xianlinBusDepot.z + 40, scene, true);
-  label('仙林公交场', xianlinBusDepot.x, 8, xianlinBusDepot.z + 40, 36);
-
-  // Spawn house outside the south gate: info board, weapon wall, displays.
-  const hx = xianlinSpawn.x, hz = 1055, hw = 17, hd = 12;
+  // ---- Spawn house outside the south gate ----
+  const hx = xianlinSpawn.x, hz = 1050, hw = 17, hd = 12;
   const walls = '#d3cbb6';
+  box(60, .1, 44, '#6d6f66', hx, .02, hz + 2);
   floor(hx, hz, hw * 2, hd * 2);
   solid(hw * 2, 4, .35, walls, hx, 2, hz + hd);
   solid(.35, 4, hd * 2, walls, hx - hw, 2, hz);
   solid(.35, 4, hd * 2, walls, hx + hw, 2, hz);
-  solid(13, 4, .35, walls, -10.5, 2, hz - hd);
-  solid(13, 4, .35, walls, 10.5, 2, hz - hd);
-  solid(10, .3, 3, '#b9b6a3', 0, .02, hz - hd - 1.6);
-  label('出生点 · SOUTH GATE', hx, 3.6, hz - hd - .35, 22, scene, Math.PI);
-  const infoBoard = board(['JINLING CITY · 仙林校区', '版本 4.0.0 · 2026-11-25', '最新推送 · 同步中…', '武器墙 / 补给箱 / 展台已就绪'], 20, 10, hx, 2.8, hz + hd - .3, Math.PI);
-  box(.2, 3.4, 16, '#3a4a48', -hw + .35, 1.9, hz);
-  for (let i = 0; i < 5; i++) { const zz = hz - 6 + i * 3; box(.16, 1.6, .5, '#2a3535', -hw + .55, 1.9, zz); box(.16, .7, .3, '#39494b', -hw + .6, 1.9, zz + .9); }
-  interactables.push({ type: 'weaponwall', name: '武器墙 · 领取武器', x: -hw + 1.6, z: hz, y: 0 });
-  label('WEAPON WALL', -hw + 1, 3.9, hz, 12, scene, Math.PI / 2);
-  for (const sx of [-7, 7]) {
+  solid(13, 4, .35, walls, hx - 10.5, 2, hz - hd);
+  solid(13, 4, .35, walls, hx + 10.5, 2, hz - hd);
+  solid(10, .3, 3, '#b9b6a3', hx, .02, hz - hd - 1.6);
+  label('出生点 · 南门外', hx, 3.6, hz - hd - .35, 22, scene, Math.PI);
+  const infoBoard = board(['JINLING CITY · 仙林校区', '版本 v0.4.0 · 2026-11-25', 'GitHub 最新推送 · 同步中…', '武器墙 / 补给箱 / 展示台已就绪'], 20, 10, hx, 2.8, hz + hd - .3, Math.PI);
+  box(.2, 3.4, 16, '#3a4a48', hx - hw + .35, 1.9, hz);
+  for (let i = 0; i < 5; i++) { const zz = hz - 6 + i * 3; box(.16, 1.6, .5, '#2a3535', hx - hw + .55, 1.9, zz); box(.16, .7, .3, '#39494b', hx - hw + .6, 1.9, zz + .9); }
+  interactables.push({ type: 'weaponwall', name: '武器墙 · 领取武器', x: hx - hw + 1.6, z: hz, y: 0 });
+  label('WEAPON WALL', hx - hw + 1, 3.9, hz, 12, scene, Math.PI / 2);
+  for (const sx of [hx - 7, hx + 7]) {
     solid(3, 1, 3, '#8d7964', sx, .5, hz + 3);
     box(3.2, .12, 3.2, '#d9dac2', sx, 1.06, hz + 3);
     box(1.2, 1.2, 1.2, '#9fb7b0', sx, 1.7, hz + 3, scene, { emissive: '#6fae9e', emissiveIntensity: .3 });
     interactables.push({ type: 'showcase', name: '展台 · 交互道具预留', x: sx, z: hz + 4.6, y: 0, message: '这里会陈列可交互道具（钥匙、信件、任务物品等），后续版本接入。' });
   }
-  box(3, 1.6, 2, '#7d8a6a', 10, .8, hz + 6);
-  interactables.push({ type: 'supply', name: '补给箱 · 弹药 / 开锁器 / 生命', x: 10, z: hz + 7.4, y: 0 });
-  // Parking lot beside the house.
-  box(150, .1, 26, '#6d6f66', 70, .03, hz - 18);
-  for (let i = 0; i < 6; i++) box(.24, .03, 22, '#d5d2bc', 12 + i * 22, .1, hz - 18);
+  box(3, 1.6, 2, '#7d8a6a', hx + 10, .8, hz + 6);
+  interactables.push({ type: 'supply', name: '补给箱 · 弹药 / 开锁器 / 生命', x: hx + 10, z: hz + 7.4, y: 0 });
+  // Parking lot + pads beside the house.
+  box(150, .1, 26, '#6d6f66', hx + 70, .03, hz - 18);
+  for (let i = 0; i < 6; i++) box(.24, .03, 22, '#d5d2bc', hx + 12 + i * 22, .1, hz - 18);
+  const helipad = { x: hx + 160, z: hz + 40 };
+  box(24, .12, 24, '#55605c', helipad.x, .04, helipad.z);
+  box(3.6, .12, 3.6, '#dfe7c8', helipad.x - 5.5, .08, helipad.z); box(3.6, .12, 3.6, '#dfe7c8', helipad.x + 5.5, .08, helipad.z);
+  box(.9, .12, 12, '#dfe7c8', helipad.x, .08, helipad.z); box(10, .12, .9, '#dfe7c8', helipad.x, .08, helipad.z);
+  label('HELIPAD', helipad.x, 3.4, helipad.z + 12.4, 16);
+  const airstrip = { x: hx - 190, z: hz + 10 };
+  box(170, .1, 20, '#4f5855', airstrip.x, .03, airstrip.z);
+  for (let i = -4; i <= 4; i++) box(6, .04, 1.1, '#d9dcc4', airstrip.x + i * 17, .1, airstrip.z);
+  label('金陵飞行场', airstrip.x, 2.6, airstrip.z + 13, 16);
+  // Bus depot.
+  box(90, .15, 70, '#566468', xianlinBusDepot.x, .04, xianlinBusDepot.z);
+  for (let i = -2; i <= 2; i++) box(.2, .03, 34, '#c9c5a8', xianlinBusDepot.x + i * 12, .14, xianlinBusDepot.z);
+  box(34, 4, 10, '#a2b3ab', xianlinBusDepot.x, 2, xianlinBusDepot.z + 40, scene, true);
+  label('仙林公交场', xianlinBusDepot.x, 8, xianlinBusDepot.z + 40, 36);
 
   const vehicles = [
-    { type: 'sport', x: 18, z: hz - 18, color: '#d7e69c', options: { shared: true } },
-    { type: 'jeep', x: 40, z: hz - 18, color: '#9fae86', options: { shared: true } },
-    { type: 'ev', x: 62, z: hz - 18, color: '#bcd9d0', options: { shared: true } },
-    { type: 'police', x: 84, z: hz - 18, color: '#dce1d6', options: { shared: true } },
-    { type: 'bus', x: 128, z: hz - 20, color: '#b8d2b1', options: { shared: true } },
+    { type: 'sport', x: hx + 18, z: hz - 18, color: '#d7e69c', options: { shared: true } },
+    { type: 'jeep', x: hx + 40, z: hz - 18, color: '#9fae86', options: { shared: true } },
+    { type: 'ev', x: hx + 62, z: hz - 18, color: '#bcd9d0', options: { shared: true } },
+    { type: 'police', x: hx + 84, z: hz - 18, color: '#dce1d6', options: { shared: true } },
+    { type: 'bus', x: hx + 128, z: hz - 20, color: '#b8d2b1', options: { shared: true } },
     { type: 'heli', x: helipad.x, z: helipad.z, color: '#d7e2b6', options: { flying: true } },
     { type: 'plane', x: airstrip.x, z: airstrip.z, yaw: Math.PI / 2, color: '#dfe3cf', options: { flying: true } },
   ];
 
-  // Filler city blocks outside the campus core + instanced trees.
-  let seed = 91; const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
+  // Trees across the lawn.
+  let seed = 77; const rand = () => { seed = (seed * 1664525 + 1013904223) >>> 0; return seed / 4294967296; };
   const nearRoad = (x, z) => roads.some(r => {
     const dx = r.b.x - r.a.x, dz = r.b.z - r.a.z, len = dx * dx + dz * dz;
     const t = len ? THREE.MathUtils.clamp(((x - r.a.x) * dx + (z - r.a.z) * dz) / len, 0, 1) : 0;
-    return Math.hypot(x - (r.a.x + t * dx), z - (r.a.z + t * dz)) < r.width / 2 + 10;
+    return Math.hypot(x - (r.a.x + t * dx), z - (r.a.z + t * dz)) < r.width / 2 + 8;
   });
-  const inCampus = (x, z) => x > -640 && x < 660 && z > -880 && z < 840;
-  const inSpawn = (x, z) => z > 905 && z < 1275 && x > -700 && x < 520;
-  const blocked = (x, z, w, d) => solids.some(s => Math.abs(x - s.x) < s.hw + w / 2 + 4 && Math.abs(z - s.z) < s.hd + d / 2 + 4);
-  const filler = [];
-  for (let i = 0; i < 240 && filler.length < 120; i++) {
-    const x = -1350 + rand() * 2700, z = -1450 + rand() * 2900;
-    const w = 24 + rand() * 40, d = 24 + rand() * 40, h = 12 + rand() * 60;
-    if (inCampus(x, z) || inSpawn(x, z) || nearRoad(x, z) || blocked(x, z, w, d)) continue;
-    if (filler.some(b => Math.abs(b.x - x) < (b.w + w) / 2 + 8 && Math.abs(b.z - z) < (b.d + d) / 2 + 8)) continue;
-    filler.push({ x, z, w, d, h });
-    solid(w, h, d, ['#c7b8a5', '#cdb9ab', '#aebdb5', '#c1aa99'][i % 4], x, h / 2, z);
-    if (i % 4 === 0) box(w + 1, .7, d + 1, '#d8d1bb', x, h, z);
-  }
-  const treeCount = 260, trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .8, 7, 6), material('#897459'), treeCount), crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(4, 0), material('#4f795c'), treeCount);
+  const treeCount = 340, trunks = new THREE.InstancedMesh(new THREE.CylinderGeometry(.5, .8, 7, 6), material('#897459'), treeCount), crowns = new THREE.InstancedMesh(new THREE.IcosahedronGeometry(4, 0), material('#4f795c'), treeCount);
   const matrix = new THREE.Matrix4(); let placed = 0;
   while (placed < treeCount) {
-    const x = -1350 + rand() * 2700, z = -1450 + rand() * 2900;
-    if (nearRoad(x, z) || inSpawn(x, z) || solids.some(s => Math.abs(x - s.x) < s.hw + 4 && Math.abs(z - s.z) < s.hd + 4)) continue;
+    const x = -560 + rand() * 1500, z = -1080 + rand() * 2100;
+    if (nearRoad(x, z) || solids.some(s => Math.abs(x - s.x) < s.hw + 4 && Math.abs(z - s.z) < s.hd + 4)) continue;
     matrix.compose(new THREE.Vector3(x, 3.5, z), new THREE.Quaternion(), new THREE.Vector3(1, 1, 1)); trunks.setMatrixAt(placed, matrix);
     matrix.setPosition(x, 8, z); crowns.setMatrixAt(placed, matrix); placed++;
   }
@@ -354,13 +375,14 @@ export function createXianlinWorld(scene) {
   trunks.computeBoundingSphere(); crowns.computeBoundingSphere(); scene.add(trunks, crowns);
 
   const places = [
-    { name: library.name, x: 0, z: -196, interior: true },
-    { name: '学生第一食堂 · 美食档 2F', x: 215, z: -196, interior: true },
-    { name: activity.name, x: -260, z: 138, interior: true },
-    { name: gym.name, x: 250, z: 152, interior: true },
-    { name: store.name, x: -270, z: 570, interior: true },
-    { name: museum.name, x: 230, z: 710, interior: true },
-    { name: '出生房 · 南门外', x: 0, z: hz - hd - 4, interior: true },
+    { name: library.name, x: 386, z: 405, interior: true },
+    { name: '学生第四、五、六餐厅 · 美食档 2F', x: -80, z: 725, interior: true },
+    { name: activity.name, x: 150, z: 447, interior: true },
+    { name: museum.name, x: 214, z: 350, interior: true },
+    { name: pool.name, x: 222, z: 170, interior: true },
+    { name: gym.name, x: -421, z: -378, interior: true },
+    { name: store.name, x: 150, z: 315, interior: true },
+    { name: '出生房 · 南门外', x: hx, z: hz - hd - 4, interior: true },
     ...towers.map(t => t.food
       ? { name: `${t.name} · 美食档 ${t.levels}F`, x: t.x, z: t.z - t.d / 2 + 7.4, interior: true }
       : { name: t.name, x: t.x, z: t.z + t.d / 2 + 3, interior: true }),
@@ -370,9 +392,9 @@ export function createXianlinWorld(scene) {
   return {
     box, solid, label, material, solids, floors, interactables, buildings, roads, nodes,
     stations: [], metroLines: [], water, districts: xianlinDistricts, bounds: xianlinBounds,
-    places, towers, helipad, airstrip, campusGround, spawn: xianlinSpawn, infoBoard,
+    places, towers, helipad, airstrip, spawn: xianlinSpawn, infoBoard,
     lift: { x: 1e9, z: 1e9, y: 0, target: 0, moving: false, mesh: { position: { y: 0 } } },
     busStops: xianlinBusStops.map(s => ({ ...s })), busDepot: xianlinBusDepot, busLabel: '校车',
-    vehicles, parkedCount: 10, trafficCount: 6, pedCount: 26,
+    vehicles, parkedCount: 14, trafficCount: 8, pedCount: 30,
   };
 }
